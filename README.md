@@ -1,5 +1,5 @@
-# whatsapp-chatbot-go
-This library helps you easily create a python chatbot application with WhatsApp API
+# whatsapp-chatbot-golang
+This library helps you easily create a golang chatbot application with WhatsApp API
 
 ### Powered by WhatsApp REST API [green-api.com](https://green-api.com/en/)
 
