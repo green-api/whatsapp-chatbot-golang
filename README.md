@@ -45,8 +45,7 @@ import (
 You can create an instance in your personal account using [link](https://console.greenapi.com/). Click create and
 select a tariff.
 To start receiving incoming notifications, you need to configure your instance. Open your personal account page
-via [link](https://console.greenapi.com/instanceList). Select an instance from the list and click on it. Click **Change
-**. IN
+via [link](https://console.greenapi.com/instanceList). Select an instance from the list and click on it. Click **Change**. In
 **Notifications** category includes all webhooks that need to be received.
 
 ### How to initialize an object
@@ -69,7 +68,7 @@ APITokenInstance := os.Getenv("API_TOKEN_INSTANCE")
 
 To start receiving notifications, you need to call the bot.StartReceivingNotifications() method on the bot.
 But before that you need to add a handler; this can be done in two ways. You can do this directly in the `main` function
-as in the `base` example.
+as in the `base` example:
 
 Link to example: [base.go](examples/base/base.go).
 
@@ -95,13 +94,10 @@ func main() {
 }
 ```
 
-If you have complex nested scripts, it is better to use scenes as in the `baseScene` example.
-Using scenes is easy - put the bot logic into a separate structure that implements the `Scene` interface, and add it to
-the bot
-using the `bot.SetStartScene(StartScene{})` method.
-The starting scene can call the next one using the `message.ActivateNextScene(NextScene{})` method, then the next
-webhook will go into the new scene, this will allow you to divide the bot into separate parts and make the code more
-readable and editable:
+Or if you have complex nested scripts, it is better to use Scenes as in the `baseScene` example.
+Using Scenes is easy - put the bot logic into a separate structure that implements the `Scene` interface, and add it to
+the bot using the `bot.SetStartScene(StartScene{})` method.
+The starting scene can call the next one using the `message.ActivateNextScene(NextScene{})` method, then the next webhook will go into the new scene, this will allow you to divide the bot into separate parts and make the code more readable and editable:
 
 ```go
 package base
@@ -175,8 +171,7 @@ bot.StartReceivingNotifications()
 }
 ```
 
-Please note that errors may occur while executing queries so that your program does not break due to them,
-you need to handle errors. All library errors are sent to the `ErrorChannel` channel, you can handle them for example in this way:
+Please note that errors may occur while executing queries so that your program does not break due to them, you need to handle errors. All library errors are sent to the `ErrorChannel` channel, you can handle them for example in this way:
 
 ```go
 package main
