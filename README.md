@@ -1,10 +1,10 @@
-#whatsapp-chatbot-golang
+# whatsapp-chatbot-golang
 
 whatsapp-chatbot-golang - library for integration with WhatsApp messenger via API
 service [greenapi.com](https://greenapi.com/). To use the library, you need to obtain a registration token
 and account ID in [personal account](https://console.greenapi.com/). There is a free developer account plan.
 
-##API
+## API
 
 Documentation for the REST API can be found at [link](https://greenapi.com/docs/api/). The library is a wrapper for the
 REST API,
@@ -170,6 +170,37 @@ map[string]interface{}{
 })
 
 bot.SetStartScene(full.StartScene{})
+
+bot.StartReceivingNotifications()
+}
+```
+
+Please note that errors may occur while executing queries so that your program does not break due to them,
+you need to handle errors. All library errors are sent to the `ErrorChannel` channel, you can handle them for example in this way:
+
+```go
+package main
+
+import (
+"fmt"
+"whatsapp_chatbot_golang/chatbot"
+"whatsapp_chatbot_golang/examples/full"
+)
+
+func main() {
+bot := chatbot.NewBot("INSTANCE_ID", "TOKEN")
+
+bot.SetStartScene(full.StartScene{})
+
+     //All errors will simply be output to the console
+go func() {
+select {
+case err := <-bot.ErrorChannel:
+if err != nil {
+fmt.Println(err)
+}
+}
+}()
 
 bot.StartReceivingNotifications()
 }

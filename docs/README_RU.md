@@ -137,6 +137,33 @@ func (s SecondScene) Start(bot *chatbot.Bot) {
 }
 ```
 
+Если вам нужно чтобы при создании нового состояния, оно уже имело некоторые дефолтные значения, необходимо изменить поле `InitData` у структуры `StateManager`.
+В стандартной имплементации `MapStateManager` это делается так:
+
+```go
+package main
+
+import (
+	"whatsapp_chatbot_golang/chatbot"
+	"whatsapp_chatbot_golang/examples/full"
+)
+
+func main() {
+	bot := chatbot.NewBot("INSTANCE_ID", "TOKEN")
+
+	bot.StateManager = chatbot.NewMapStateManager(
+		map[string]interface{}{
+			"defaultField1": "defaultValue1",
+			"defaultField2": "defaultValue2",
+			"defaultField3": "defaultValue3",
+		})
+
+	bot.SetStartScene(full.StartScene{})
+
+	bot.StartReceivingNotifications()
+}
+```
+
 Обратите внимание, что во время выполнения запросов могут возникать ошибки, чтобы ваша программа не прерывалась из-за них,
 вам необходимо обрабатывать ошибки. Все ошибки библиотеки отправляются в канал `ErrorChannel`, вы можете обработать их например таким способом:
 
