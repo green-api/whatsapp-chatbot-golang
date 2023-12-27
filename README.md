@@ -151,24 +151,25 @@ In the standard implementation of `MapStateManager` this is done like this:
 package main
 
 import (
-"whatsapp_chatbot_golang/chatbot"
-"whatsapp_chatbot_golang/examples/full"
+	"whatsapp_chatbot_golang/chatbot"
+	"whatsapp_chatbot_golang/examples/full"
 )
 
 func main() {
-bot := chatbot.NewBot("INSTANCE_ID", "TOKEN")
+	bot := chatbot.NewBot("INSTANCE_ID", "TOKEN")
 
-bot.StateManager = chatbot.NewMapStateManager(
-map[string]interface{}{
-"defaultField1": "defaultValue1",
-"defaultField2": "defaultValue2",
-"defaultField3": "defaultValue3",
-})
+	bot.StateManager = chatbot.NewMapStateManager(
+		map[string]interface{}{
+			"defaultField1": "defaultValue1",
+			"defaultField2": "defaultValue2",
+			"defaultField3": "defaultValue3",
+		})
 
-bot.SetStartScene(full.StartScene{})
+	bot.SetStartScene(full.StartScene{})
 
-bot.StartReceivingNotifications()
+	bot.StartReceivingNotifications()
 }
+
 ```
 
 Please note that errors may occur while executing queries so that your program does not break due to them, you need to handle errors. All library errors are sent to the `ErrorChannel` channel, you can handle them for example in this way:
@@ -177,28 +178,29 @@ Please note that errors may occur while executing queries so that your program d
 package main
 
 import (
-"fmt"
-"whatsapp_chatbot_golang/chatbot"
-"whatsapp_chatbot_golang/examples/full"
+	"fmt"
+	"whatsapp_chatbot_golang/chatbot"
+	"whatsapp_chatbot_golang/examples/full"
 )
 
 func main() {
-bot := chatbot.NewBot("INSTANCE_ID", "TOKEN")
+	bot := chatbot.NewBot("INSTANCE_ID", "TOKEN")
 
-bot.SetStartScene(full.StartScene{})
+	bot.SetStartScene(full.StartScene{})
 
-     //All errors will simply be output to the console
-go func() {
-select {
-case err := <-bot.ErrorChannel:
-if err != nil {
-fmt.Println(err)
-}
-}
-}()
+	//All errors will simply be output to the console
+	go func() {
+		select {
+		case err := <-bot.ErrorChannel:
+			if err != nil {
+				fmt.Println(err)
+			}
+		}
+	}()
 
-bot.StartReceivingNotifications()
+	bot.StartReceivingNotifications()
 }
+
 ```
 
 ### How to receive other notifications and handle the notification body
