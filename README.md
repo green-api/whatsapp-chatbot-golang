@@ -1,5 +1,7 @@
 # whatsapp-chatbot-golang
 
+[Документация на русском языке.](docs/README_RU.md)
+
 whatsapp-chatbot-golang - library for integration with WhatsApp messenger via API
 service [greenapi.com](https://greenapi.com/). To use the library, you need to obtain a registration token
 and account ID in [personal account](https://console.greenapi.com/). There is a free developer account plan.
