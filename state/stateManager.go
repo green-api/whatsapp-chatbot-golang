@@ -1,4 +1,8 @@
-package chatbot
+package state
+
+import (
+	"github.com/green-api/whatsapp_chatbot_golang/scene"
+)
 
 type StateManager interface {
 	Get(stateId string) State
@@ -9,16 +13,16 @@ type StateManager interface {
 	SetStateData(stateId string, stateData map[string]interface{})
 	UpdateStateData(stateId string, stateData map[string]interface{})
 	DeleteStateData(stateId string)
-	ActivateNextScene(stateId string, scene Scene)
-	GetCurrentScene(stateId string) Scene
-	GetStartScene() Scene
-	SetStartScene(startScene Scene)
+	ActivateNextScene(stateId string, scene scene.Scene)
+	GetCurrentScene(stateId string) scene.Scene
+	GetStartScene() scene.Scene
+	SetStartScene(startScene scene.Scene)
 }
 
 type MapStateManager struct {
 	states     map[string]State
 	InitData   map[string]interface{}
-	StartScene Scene
+	StartScene scene.Scene
 }
 
 func NewMapStateManager(initData map[string]interface{}) *MapStateManager {
@@ -29,11 +33,11 @@ func NewMapStateManager(initData map[string]interface{}) *MapStateManager {
 	}
 }
 
-func (sm *MapStateManager) GetStartScene() Scene {
+func (sm *MapStateManager) GetStartScene() scene.Scene {
 	return sm.StartScene
 }
 
-func (sm *MapStateManager) SetStartScene(StartScene Scene) {
+func (sm *MapStateManager) SetStartScene(StartScene scene.Scene) {
 	sm.StartScene = StartScene
 }
 
@@ -85,14 +89,14 @@ func (sm *MapStateManager) DeleteStateData(stateId string) {
 	}
 }
 
-func (sm *MapStateManager) ActivateNextScene(stateId string, scene Scene) {
+func (sm *MapStateManager) ActivateNextScene(stateId string, scene scene.Scene) {
 	state := sm.Get(stateId)
 	if state != nil {
 		state.setScene(scene)
 	}
 }
 
-func (sm *MapStateManager) GetCurrentScene(stateId string) Scene {
+func (sm *MapStateManager) GetCurrentScene(stateId string) scene.Scene {
 	state := sm.Get(stateId)
 	if state != nil {
 		return state.getScene()

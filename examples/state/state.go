@@ -1,14 +1,14 @@
 package state
 
 import (
-	"whatsapp_chatbot_golang/chatbot"
+	"github.com/green-api/whatsapp_chatbot_golang"
 )
 
 type StartScene struct {
 }
 
-func (s StartScene) Start(bot *chatbot.Bot) {
-	bot.IncomingMessageHandler(func(notification *chatbot.Notification) {
+func (s StartScene) Start(bot *whatsapp_chatbot_golang.Bot) {
+	bot.IncomingMessageHandler(func(notification *whatsapp_chatbot_golang.Notification) {
 		if notification.Filter(map[string][]string{"text": {"/start"}}) {
 			notification.AnswerWithText("Привет! Этот бот - пример использования состояния.\nПожалуйста введите логин:")
 			notification.ActivateNextScene(LoginScene{})
@@ -21,8 +21,8 @@ func (s StartScene) Start(bot *chatbot.Bot) {
 type LoginScene struct {
 }
 
-func (s LoginScene) Start(bot *chatbot.Bot) {
-	bot.IncomingMessageHandler(func(notification *chatbot.Notification) {
+func (s LoginScene) Start(bot *whatsapp_chatbot_golang.Bot) {
+	bot.IncomingMessageHandler(func(notification *whatsapp_chatbot_golang.Notification) {
 		login, err := notification.Text()
 		if err != nil || len(login) > 12 || len(login) < 6 {
 			notification.AnswerWithText("Выберите логин от 6 до 12 символов!")
@@ -37,8 +37,8 @@ func (s LoginScene) Start(bot *chatbot.Bot) {
 type PasswordScene struct {
 }
 
-func (s PasswordScene) Start(bot *chatbot.Bot) {
-	bot.IncomingMessageHandler(func(notification *chatbot.Notification) {
+func (s PasswordScene) Start(bot *whatsapp_chatbot_golang.Bot) {
+	bot.IncomingMessageHandler(func(notification *whatsapp_chatbot_golang.Notification) {
 		password, err := notification.Text()
 		if err != nil || len(password) > 16 || len(password) < 8 {
 			notification.AnswerWithText("Выберите пароль от 8 до 16 символов!")

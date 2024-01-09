@@ -1,4 +1,4 @@
-package chatbot
+package whatsapp_chatbot_golang
 
 type Publisher struct {
 	incomingMessage       []func(notification *Notification)

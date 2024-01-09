@@ -1,11 +1,11 @@
 package base
 
 import (
-	"whatsapp_chatbot_golang/chatbot"
+	"github.com/green-api/whatsapp_chatbot_golang"
 )
 
 func main() {
-	bot := chatbot.NewBot("INSTANCE_ID", "TOKEN")
+	bot := whatsapp_chatbot_golang.NewBot("INSTANCE_ID", "TOKEN")
 
 	bot.SetStartScene(StartScene{})
 
@@ -15,8 +15,8 @@ func main() {
 type StartScene struct {
 }
 
-func (s StartScene) Start(bot *chatbot.Bot) {
-	bot.IncomingMessageHandler(func(message *chatbot.Notification) {
+func (s StartScene) Start(bot *whatsapp_chatbot_golang.Bot) {
+	bot.IncomingMessageHandler(func(message *whatsapp_chatbot_golang.Notification) {
 		if message.Filter(map[string][]string{"text": {"test"}}) {
 			message.AnswerWithText("Well done! You have write \"test\".")
 			message.AnswerWithText("Now write \"second scene\"")
@@ -30,8 +30,8 @@ func (s StartScene) Start(bot *chatbot.Bot) {
 type SecondScene struct {
 }
 
-func (s SecondScene) Start(bot *chatbot.Bot) {
-	bot.IncomingMessageHandler(func(message *chatbot.Notification) {
+func (s SecondScene) Start(bot *whatsapp_chatbot_golang.Bot) {
+	bot.IncomingMessageHandler(func(message *whatsapp_chatbot_golang.Notification) {
 		if message.Filter(map[string][]string{"text": {"second scene"}}) {
 			message.AnswerWithText("Well done! You have write \"second scene\".")
 			message.ActivateNextScene(StartScene{})

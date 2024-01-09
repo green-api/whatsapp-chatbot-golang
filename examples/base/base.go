@@ -1,13 +1,13 @@
 package base
 
 import (
-	"whatsapp_chatbot_golang/chatbot"
+	"github.com/green-api/whatsapp_chatbot_golang"
 )
 
 func main() {
-	bot := chatbot.NewBot("INSTANCE_ID", "TOKEN")
+	bot := whatsapp_chatbot_golang.NewBot("INSTANCE_ID", "TOKEN")
 
-	bot.IncomingMessageHandler(func(message *chatbot.Notification) {
+	bot.IncomingMessageHandler(func(message *whatsapp_chatbot_golang.Notification) {
 		if message.Filter(map[string][]string{"text": {"test"}}) {
 			message.AnswerWithText("Well done! You have write \"test\".")
 		} else {

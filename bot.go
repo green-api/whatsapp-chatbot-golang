@@ -1,7 +1,8 @@
-package chatbot
+package whatsapp_chatbot_golang
 
 import (
 	"github.com/green-api/whatsapp-api-client-golang/pkg/api"
+	"github.com/green-api/whatsapp_chatbot_golang/state"
 	"log"
 	"time"
 )
@@ -9,7 +10,7 @@ import (
 type Bot struct {
 	api.GreenAPI
 	CleanNotificationQueue bool
-	StateManager
+	state.StateManager
 	Publisher
 	isStart      bool
 	ErrorChannel chan error
@@ -22,7 +23,7 @@ func NewBot(IDInstance string, APITokenInstance string) *Bot {
 			APITokenInstance: APITokenInstance,
 		},
 		CleanNotificationQueue: true,
-		StateManager:           NewMapStateManager(map[string]interface{}{}),
+		StateManager:           state.NewMapStateManager(map[string]interface{}{}),
 		Publisher:              Publisher{},
 		ErrorChannel:           make(chan error, 1),
 	}
@@ -95,7 +96,7 @@ func (b *Bot) startCurrentScene(n *Notification) {
 	if currentState == nil {
 		currentState = n.StateManager.Create(n.StateId)
 	}
-	if currentState.getScene() != nil {
+	if n.GetCurrentScene() != nil {
 		b.Publisher.clearAll()
 		n.GetCurrentScene().Start(b)
 	}

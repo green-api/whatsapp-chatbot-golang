@@ -1,14 +1,14 @@
 package full
 
 import (
-	"whatsapp_chatbot_golang/chatbot"
+	"github.com/green-api/whatsapp_chatbot_golang"
 )
 
 type StartScene struct {
 }
 
-func (s StartScene) Start(bot *chatbot.Bot) {
-	bot.IncomingMessageHandler(func(notification *chatbot.Notification) {
+func (s StartScene) Start(bot *whatsapp_chatbot_golang.Bot) {
+	bot.IncomingMessageHandler(func(notification *whatsapp_chatbot_golang.Notification) {
 		if notification.Filter(map[string][]string{"text": {"/start"}}) {
 			notification.AnswerWithText(`Привет! Этот бот использует различные методы API.
 Пожалуйста выберите метод:
@@ -28,9 +28,9 @@ func (s StartScene) Start(bot *chatbot.Bot) {
 type PickMethodScene struct {
 }
 
-func (s PickMethodScene) Start(bot *chatbot.Bot) {
+func (s PickMethodScene) Start(bot *whatsapp_chatbot_golang.Bot) {
 
-	bot.IncomingMessageHandler(func(message *chatbot.Notification) {
+	bot.IncomingMessageHandler(func(message *whatsapp_chatbot_golang.Notification) {
 		if message.Filter(map[string][]string{"text": {"1"}}) {
 			message.AnswerWithText("Hello world!")
 		}
@@ -77,8 +77,8 @@ func (s PickMethodScene) Start(bot *chatbot.Bot) {
 type InputLinkScene struct {
 }
 
-func (s InputLinkScene) Start(bot *chatbot.Bot) {
-	bot.IncomingMessageHandler(func(message *chatbot.Notification) {
+func (s InputLinkScene) Start(bot *whatsapp_chatbot_golang.Bot) {
+	bot.IncomingMessageHandler(func(message *whatsapp_chatbot_golang.Notification) {
 		if message.Filter(map[string][]string{"regex": {"^https://[^\\s]+$"}}) {
 			text, _ := message.Text()
 			message.AnswerWithUrlFile(text, "testFile", "This is your file!")

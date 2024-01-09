@@ -1,19 +1,23 @@
-package chatbot
+package state
+
+import (
+	"github.com/green-api/whatsapp_chatbot_golang/scene"
+)
 
 type State interface {
 	getData() map[string]interface{}
 	setData(data map[string]interface{})
 	updateData(data map[string]interface{})
-	getScene() Scene
-	setScene(scene Scene)
+	getScene() scene.Scene
+	setScene(scene scene.Scene)
 }
 
 type MapState struct {
 	data  map[string]interface{}
-	scene Scene
+	scene scene.Scene
 }
 
-func NewMapState(data map[string]interface{}, scene Scene) *MapState {
+func NewMapState(data map[string]interface{}, scene scene.Scene) *MapState {
 	newData := make(map[string]interface{})
 	for key, value := range data {
 		newData[key] = value
@@ -38,10 +42,10 @@ func (s *MapState) updateData(data map[string]interface{}) {
 	}
 }
 
-func (s *MapState) getScene() Scene {
+func (s *MapState) getScene() scene.Scene {
 	return s.scene
 }
 
-func (s *MapState) setScene(scene Scene) {
+func (s *MapState) setScene(scene scene.Scene) {
 	s.scene = scene
 }

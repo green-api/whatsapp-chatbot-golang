@@ -1,4 +1,4 @@
-package chatbot
+package whatsapp_chatbot_golang
 
 func (n *Notification) AnswerWithText(text string) map[string]interface{} {
 	chatId := n.Body["senderData"].(map[string]interface{})["chatId"].(string)

@@ -77,7 +77,7 @@ Link to example: [base.go](examples/base/base.go).
 package base
 
 import (
-	"whatsapp_chatbot_golang/chatbot"
+	"github.com/green-api/whatsapp_chatbot_golang/chatbot"
 )
 
 func main() {
@@ -107,7 +107,7 @@ readable and editable:
 package base
 
 import (
-	"whatsapp_chatbot_golang/chatbot"
+	"github.com/green-api/whatsapp_chatbot_golang/chatbot"
 )
 
 func main() {
@@ -155,8 +155,8 @@ In the standard implementation of `MapStateManager` this is done like this:
 package main
 
 import (
-"whatsapp_chatbot_golang/chatbot"
-"whatsapp_chatbot_golang/examples/full"
+"github.com/green-api/whatsapp_chatbot_golang/chatbot"
+"github.com/green-api/whatsapp_chatbot_golang/examples/full"
 )
 
 func main() {
@@ -186,7 +186,7 @@ Link to example: [event.go](examples/event/event.go).
 ```go
 package event
 
-import cb "whatsapp_chatbot_golang/chatbot"
+import cb "github.com/green-api/whatsapp_chatbot_golang/chatbot"
 
 type StartScene struct {
 }
@@ -246,7 +246,7 @@ Link to example: [filter.go](examples/filter/filter.go).
 ```go
 package filter
 
-import cb "whatsapp_chatbot_golang/chatbot"
+import cb "github.com/green-api/whatsapp_chatbot_golang/chatbot"
 
 type StartScene struct {
 }
@@ -302,7 +302,7 @@ Link to example: [state.go](examples/state/state.go).
 package state
 
 import (
-	"whatsapp_chatbot_golang/chatbot"
+	"github.com/green-api/whatsapp_chatbot_golang/chatbot"
 )
 
 type StartScene struct {
@@ -360,8 +360,8 @@ In the standard implementation of `MapStateManager` this is done like this:
 package main
 
 import (
-	"whatsapp_chatbot_golang/chatbot"
-	"whatsapp_chatbot_golang/examples/full"
+	"github.com/green-api/whatsapp_chatbot_golang/chatbot"
+	"github.com/green-api/whatsapp_chatbot_golang/examples/full"
 )
 
 func main() {
@@ -398,7 +398,7 @@ link to the file and send the file if the link is valid.
 package full
 
 import (
-	"whatsapp_chatbot_golang/chatbot"
+	"github.com/green-api/whatsapp_chatbot_golang/chatbot"
 )
 
 type StartScene struct {
