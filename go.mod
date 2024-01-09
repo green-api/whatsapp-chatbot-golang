@@ -1,4 +1,4 @@
-module whatsapp_chatbot_golang
+module github.com/green-api/whatsapp_chatbot_golang
 
 go 1.21.5
 

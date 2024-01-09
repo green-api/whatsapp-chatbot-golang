@@ -1,4 +1,4 @@
-package chatbot
+package whatsapp_chatbot_golang
 
 import (
 	"github.com/green-api/whatsapp-api-client-golang/pkg/api"
@@ -95,7 +95,7 @@ func (b *Bot) startCurrentScene(n *Notification) {
 	if currentState == nil {
 		currentState = n.StateManager.Create(n.StateId)
 	}
-	if currentState.getScene() != nil {
+	if n.GetCurrentScene() != nil {
 		b.Publisher.clearAll()
 		n.GetCurrentScene().Start(b)
 	}

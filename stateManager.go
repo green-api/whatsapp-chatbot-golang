@@ -1,4 +1,4 @@
-package chatbot
+package whatsapp_chatbot_golang
 
 type StateManager interface {
 	Get(stateId string) State

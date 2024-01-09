@@ -72,7 +72,7 @@ APITokenInstance := os.Getenv("API_TOKEN_INSTANCE")
 package base
 
 import (
-	"whatsapp_chatbot_golang/chatbot"
+	"github.com/green-api/whatsapp_chatbot_golang/chatbot"
 )
 
 func main() {
@@ -98,7 +98,7 @@ func main() {
 package base
 
 import (
-	"whatsapp_chatbot_golang/chatbot"
+	"github.com/green-api/whatsapp_chatbot_golang/chatbot"
 )
 
 func main() {
@@ -144,8 +144,8 @@ func (s SecondScene) Start(bot *chatbot.Bot) {
 package main
 
 import (
-	"whatsapp_chatbot_golang/chatbot"
-	"whatsapp_chatbot_golang/examples/full"
+	"github.com/green-api/whatsapp_chatbot_golang/chatbot"
+	"github.com/green-api/whatsapp_chatbot_golang/examples/full"
 )
 
 func main() {
@@ -172,8 +172,8 @@ package main
 
 import (
 	"fmt"
-	"whatsapp_chatbot_golang/chatbot"
-	"whatsapp_chatbot_golang/examples/full"
+	"github.com/green-api/whatsapp_chatbot_golang/chatbot"
+	"github.com/green-api/whatsapp_chatbot_golang/examples/full"
 )
 
 func main() {
@@ -205,7 +205,7 @@ func main() {
 ```go
 package event
 
-import cb "whatsapp_chatbot_golang/chatbot"
+import cb "github.com/green-api/whatsapp_chatbot_golang/chatbot"
 
 type StartScene struct {
 }
@@ -262,7 +262,7 @@ func (s StartScene) Start(bot *cb.Bot) {
 ```go
 package filter
 
-import cb "whatsapp_chatbot_golang/chatbot"
+import cb "github.com/green-api/whatsapp_chatbot_golang/chatbot"
 
 type StartScene struct {
 }
@@ -315,7 +315,7 @@ func (s StartScene) Start(bot *cb.Bot) {
 package state
 
 import (
-	"whatsapp_chatbot_golang/chatbot"
+	"github.com/green-api/whatsapp_chatbot_golang/chatbot"
 )
 
 type StartScene struct {
@@ -372,8 +372,8 @@ func (s PasswordScene) Start(bot *chatbot.Bot) {
 package main
 
 import (
-	"whatsapp_chatbot_golang/chatbot"
-	"whatsapp_chatbot_golang/examples/full"
+	"github.com/green-api/whatsapp_chatbot_golang/chatbot"
+	"github.com/green-api/whatsapp_chatbot_golang/examples/full"
 )
 
 func main() {
@@ -409,7 +409,7 @@ func main() {
 package full
 
 import (
-	"whatsapp_chatbot_golang/chatbot"
+	"github.com/green-api/whatsapp_chatbot_golang/chatbot"
 )
 
 type StartScene struct {
