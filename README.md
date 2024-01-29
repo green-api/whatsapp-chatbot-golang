@@ -40,6 +40,16 @@ import (
 )
 ```
 
+## Setup
+
+Before launching the bot you should enable incoming notifications in instance settings by using <a href="https://green-api.com/en/docs/api/account/SetSettings/">SetSettings method</a>.
+
+```json
+"incomingWebhook": "yes",
+"outgoingMessageWebhook": "yes",
+"outgoingAPIMessageWebhook": "yes",
+```
+
 ## Examples
 
 ### How to set up an instance
