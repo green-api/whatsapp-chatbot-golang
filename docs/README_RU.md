@@ -37,6 +37,16 @@ import (
 )
 ```
 
+## Настройки
+
+Перед запуском бота необходимо включить входящие уведомления в настройках экземпляра с помощью <a href="https://green-api.com/en/docs/api/account/SetSettings/">метода SetSettings</a>.
+
+```json
+"incomingWebhook": "yes",
+"outgoingMessageWebhook": "yes",
+"outgoingAPIMessageWebhook": "yes",
+```
+
 ## Примеры
 
 ### Как настроить инстанс
