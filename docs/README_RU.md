@@ -37,6 +37,16 @@ import (
 )
 ```
 
+## Настройки
+
+Перед запуском бота необходимо включить входящие уведомления в настройках экземпляра с помощью <a href="https://green-api.com/en/docs/api/account/SetSettings/">метода SetSettings</a>.
+
+```json
+"incomingWebhook": "yes",
+"outgoingMessageWebhook": "yes",
+"outgoingAPIMessageWebhook": "yes",
+```
+
 ## Примеры
 
 ### Как настроить инстанс
@@ -240,6 +250,12 @@ func (s StartScene) Start(bot *cb.Bot) {
 	})
 }
 ```
+
+### Получение уведомлений через HTTP API
+
+Получать входящие уведомления (сообщения, статусы) можно через HTTP API запросы по аналогии, как реализованы остальные методы Green API. При этом гарантируется хронологический порядок следования уведомлений в той последовательности, в которой они были получены FIFO. Все входящие уведомления сохраняются в очереди и ожидают своего получения в течение 24 часов.
+
+Для получения входящих уведомлений требуется выполнить последовательно вызов двух методов <a href="https://green-api.com/docs/api/receiving/technology-http-api/ReceiveNotification/">ReceiveNotification</a> и <a href="https://green-api.com/docs/api/receiving/technology-http-api/DeleteNotification/">DeleteNotification</a>. Метод ReceiveNotification выполняет получение входящего уведомления. Метод DeleteNotification подтверждает успешное получение и обработку уведомления. Подробнее о методах смотрите в соответствующих разделах ReceiveNotification и DeleteNotification.
 
 ### Как фильтровать входящие сообщения
 
