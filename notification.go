@@ -34,7 +34,7 @@ func (n *Notification) Text() (string, error) {
 
 func (n *Notification) Sender() (string, error) {
 	if n.isIncomingMessage() || n.isOutgoingMessage() {
-		return n.Body["senderData"].(map[string]interface{})["chatId"].(string), nil
+		return n.Body["senderData"].(map[string]interface{})["sender"].(string), nil
 	}
 
 	return "", errors.New("sender not found, it isn't message webhook")
@@ -42,7 +42,7 @@ func (n *Notification) Sender() (string, error) {
 
 func (n *Notification) ChatId() (string, error) {
 	if n.isIncomingMessage() || n.isOutgoingMessage() {
-		return n.Body["senderData"].(map[string]interface{})["sender"].(string), nil
+		return n.Body["senderData"].(map[string]interface{})["chatId"].(string), nil
 	}
 
 	return "", errors.New("chatId not found, it isn't message webhook")
