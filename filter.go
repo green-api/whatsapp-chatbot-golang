@@ -53,63 +53,40 @@ func contains(slice []string, target string) bool {
 
 func (n *Notification) isIncomingMessage() bool {
 	typeWebhook := n.Body["typeWebhook"].(string)
-	if typeWebhook == "incomingMessageReceived" {
-		return true
-	}
+	return typeWebhook == "incomingMessageReceived"
+}
 
-	return false
+func (n *Notification) isPollUpdateMessage() bool {
+	typeWebhook := n.Body["typeWebhook"].(string)
+	return typeWebhook == "pollUpdateMessage"
 }
 
 func (n *Notification) isOutgoingMessage() bool {
 	typeWebhook := n.Body["typeWebhook"].(string)
-	if typeWebhook == "outgoingMessageReceived" || typeWebhook == "outgoingAPIMessageReceived" {
-		return true
-	}
-
-	return false
+	return typeWebhook == "outgoingMessageReceived" || typeWebhook == "outgoingAPIMessageReceived"
 }
 
 func (n *Notification) isOutgoingMessageStatus() bool {
 	typeWebhook := n.Body["typeWebhook"].(string)
-	if typeWebhook == "outgoingMessageStatus" {
-		return true
-	}
-
-	return false
+	return typeWebhook == "outgoingMessageStatus"
 }
 
 func (n *Notification) isStateInstanceChanged() bool {
 	typeWebhook := n.Body["typeWebhook"].(string)
-	if typeWebhook == "stateInstanceChanged" {
-		return true
-	}
-
-	return false
+	return typeWebhook == "stateInstanceChanged"
 }
 
 func (n *Notification) isIncomingCall() bool {
 	typeWebhook := n.Body["typeWebhook"].(string)
-	if typeWebhook == "incomingCall" {
-		return true
-	}
-
-	return false
+	return typeWebhook == "incomingCall"
 }
 
 func (n *Notification) isIncomingBlock() bool {
 	typeWebhook := n.Body["typeWebhook"].(string)
-	if typeWebhook == "incomingBlock" {
-		return true
-	}
-
-	return false
+	return typeWebhook == "incomingBlock"
 }
 
 func (n *Notification) isDeviceInfo() bool {
 	typeWebhook := n.Body["typeWebhook"].(string)
-	if typeWebhook == "deviceInfo" {
-		return true
-	}
-
-	return false
+	return typeWebhook == "deviceInfo"
 }
