@@ -142,7 +142,7 @@ func (n *Notification) SendUploadFile(filePath string, caption string) map[strin
 }
 
 func (n *Notification) SendUrlFile(urlFile string, filename string, caption string) map[string]interface{} {
-	chatId := n.Body["senderData"].(map[string]interface{})["chatId"].(string)
+	chatId := tryParseChatId(n)
 	response, err := n.GreenAPI.Methods().Sending().SendFileByUrl(map[string]interface{}{
 		"chatId":   chatId,
 		"urlFile":  urlFile,
@@ -159,7 +159,7 @@ func (n *Notification) SendUrlFile(urlFile string, filename string, caption stri
 }
 
 func (n *Notification) SendLocation(nameLocation string, address string, latitude float64, longitude float64) map[string]interface{} {
-	chatId := n.Body["senderData"].(map[string]interface{})["chatId"].(string)
+	chatId := tryParseChatId(n)
 	response, err := n.GreenAPI.Methods().Sending().SendLocation(map[string]interface{}{
 		"chatId":       chatId,
 		"nameLocation": nameLocation,
@@ -177,7 +177,7 @@ func (n *Notification) SendLocation(nameLocation string, address string, latitud
 }
 
 func (n *Notification) SendPoll(message string, multipleAnswers bool, options []map[string]interface{}) map[string]interface{} {
-	chatId := n.Body["senderData"].(map[string]interface{})["chatId"].(string)
+	chatId := tryParseChatId(n)
 	response, err := n.GreenAPI.Methods().Sending().SendPoll(map[string]interface{}{
 		"chatId":          chatId,
 		"message":         message,
@@ -194,7 +194,7 @@ func (n *Notification) SendPoll(message string, multipleAnswers bool, options []
 }
 
 func (n *Notification) SendContact(contact map[string]interface{}) map[string]interface{} {
-	chatId := n.Body["senderData"].(map[string]interface{})["chatId"].(string)
+	chatId := tryParseChatId(n)
 	response, err := n.GreenAPI.Methods().Sending().SendContact(map[string]interface{}{
 		"chatId":  chatId,
 		"contact": contact,
