@@ -1,7 +1,8 @@
 package whatsapp_chatbot_golang
 
 func (n *Notification) AnswerWithText(text string) map[string]interface{} {
-	chatId := n.Body["senderData"].(map[string]interface{})["chatId"].(string)
+	chatId := tryParseChatId(n)
+
 	idMessage := n.Body["idMessage"].(string)
 	response, err := n.GreenAPI.Methods().Sending().SendMessage(map[string]interface{}{
 		"chatId":          chatId,
@@ -18,7 +19,8 @@ func (n *Notification) AnswerWithText(text string) map[string]interface{} {
 }
 
 func (n *Notification) AnswerWithUploadFile(filePath string, caption string) map[string]interface{} {
-	chatId := n.Body["senderData"].(map[string]interface{})["chatId"].(string)
+	chatId := tryParseChatId(n)
+
 	idMessage := n.Body["idMessage"].(string)
 	response, err := n.GreenAPI.Methods().Sending().SendFileByUpload(filePath, map[string]interface{}{
 		"chatId":          chatId,
@@ -35,7 +37,7 @@ func (n *Notification) AnswerWithUploadFile(filePath string, caption string) map
 }
 
 func (n *Notification) AnswerWithUrlFile(urlFile string, filename string, caption string) map[string]interface{} {
-	chatId := n.Body["senderData"].(map[string]interface{})["chatId"].(string)
+	chatId := tryParseChatId(n)
 	idMessage := n.Body["idMessage"].(string)
 	response, err := n.GreenAPI.Methods().Sending().SendFileByUrl(map[string]interface{}{
 		"chatId":          chatId,
@@ -54,7 +56,7 @@ func (n *Notification) AnswerWithUrlFile(urlFile string, filename string, captio
 }
 
 func (n *Notification) AnswerWithLocation(nameLocation string, address string, latitude float64, longitude float64) map[string]interface{} {
-	chatId := n.Body["senderData"].(map[string]interface{})["chatId"].(string)
+	chatId := tryParseChatId(n)
 	idMessage := n.Body["idMessage"].(string)
 	response, err := n.GreenAPI.Methods().Sending().SendLocation(map[string]interface{}{
 		"chatId":          chatId,
@@ -74,7 +76,7 @@ func (n *Notification) AnswerWithLocation(nameLocation string, address string, l
 }
 
 func (n *Notification) AnswerWithPoll(message string, multipleAnswers bool, options []map[string]interface{}) map[string]interface{} {
-	chatId := n.Body["senderData"].(map[string]interface{})["chatId"].(string)
+	chatId := tryParseChatId(n)
 	idMessage := n.Body["idMessage"].(string)
 	response, err := n.GreenAPI.Methods().Sending().SendPoll(map[string]interface{}{
 		"chatId":          chatId,
@@ -93,7 +95,7 @@ func (n *Notification) AnswerWithPoll(message string, multipleAnswers bool, opti
 }
 
 func (n *Notification) AnswerWithContact(contact map[string]interface{}) map[string]interface{} {
-	chatId := n.Body["senderData"].(map[string]interface{})["chatId"].(string)
+	chatId := tryParseChatId(n)
 	idMessage := n.Body["idMessage"].(string)
 	response, err := n.GreenAPI.Methods().Sending().SendContact(map[string]interface{}{
 		"chatId":          chatId,
@@ -110,7 +112,7 @@ func (n *Notification) AnswerWithContact(contact map[string]interface{}) map[str
 }
 
 func (n *Notification) SendText(text string) map[string]interface{} {
-	chatId := n.Body["senderData"].(map[string]interface{})["chatId"].(string)
+	chatId := tryParseChatId(n)
 	response, err := n.GreenAPI.Methods().Sending().SendMessage(map[string]interface{}{
 		"chatId":  chatId,
 		"message": text,
@@ -125,7 +127,7 @@ func (n *Notification) SendText(text string) map[string]interface{} {
 }
 
 func (n *Notification) SendUploadFile(filePath string, caption string) map[string]interface{} {
-	chatId := n.Body["senderData"].(map[string]interface{})["chatId"].(string)
+	chatId := tryParseChatId(n)
 	response, err := n.GreenAPI.Methods().Sending().SendFileByUpload(filePath, map[string]interface{}{
 		"chatId":  chatId,
 		"caption": caption,
@@ -204,4 +206,16 @@ func (n *Notification) SendContact(contact map[string]interface{}) map[string]in
 	}
 
 	return response
+}
+
+func tryParseChatId(n *Notification) string {
+	var chatId string
+
+	if n.Body["senderData"] != nil {
+		chatId = n.Body["senderData"].(map[string]interface{})["chatId"].(string)
+	} else {
+		chatId = n.Body["from"].(string)
+	}
+
+	return chatId
 }

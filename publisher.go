@@ -62,19 +62,19 @@ func (p *Publisher) OutgoingMessageStatusHandler(f func(notification *Notificati
 }
 
 func (p *Publisher) IncomingCallHandler(f func(notification *Notification)) {
-	p.outgoingMessageStatus = append(p.outgoingMessageStatus, f)
+	p.incomingCall = append(p.outgoingMessageStatus, f)
 }
 
 func (p *Publisher) IncomingBlockHandler(f func(notification *Notification)) {
-	p.outgoingMessageStatus = append(p.outgoingMessageStatus, f)
+	p.incomingBlock = append(p.outgoingMessageStatus, f)
 }
 
 func (p *Publisher) StateInstanceChangedHandler(f func(notification *Notification)) {
-	p.outgoingMessageStatus = append(p.outgoingMessageStatus, f)
+	p.stateInstanceChanged = append(p.outgoingMessageStatus, f)
 }
 
 func (p *Publisher) DeviceInfoHandler(f func(notification *Notification)) {
-	p.outgoingMessageStatus = append(p.outgoingMessageStatus, f)
+	p.deviceInfo = append(p.outgoingMessageStatus, f)
 }
 
 func (p *Publisher) clearAll() {
