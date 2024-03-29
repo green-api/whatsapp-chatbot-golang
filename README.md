@@ -1,4 +1,7 @@
 # whatsapp-chatbot-golang
+| Support links                                                                                                                                                                                                                                                                                                                                                                                                                           | Guides & News                                                                                                                                                                                                                                                                                                                                                                                                                                             |
+|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| [![Support](https://img.shields.io/badge/support--mail-D14836?style=for-the-badge&logo=gmail&logoColor=white)](mailto:support@greenapi.com) [![Support](https://img.shields.io/badge/Telegram-2CA5E0?style=for-the-badge&logo=telegram&logoColor=white)](https://t.me/greenapi_support_eng_bot) [![Support](https://img.shields.io/badge/WhatsApp-25D366?style=for-the-badge&logo=whatsapp&logoColor=white)](https://wa.me/77273122366) | [![Guides](https://img.shields.io/badge/YouTube-%23FF0000.svg?style=for-the-badge&logo=YouTube&logoColor=white)](https://www.youtube.com/@greenapi-en) [![News](https://img.shields.io/badge/Telegram-2CA5E0?style=for-the-badge&logo=telegram&logoColor=white)](https://t.me/green_api) [![News](https://img.shields.io/badge/WhatsApp-25D366?style=for-the-badge&logo=whatsapp&logoColor=white)](https://whatsapp.com/channel/0029VaLj6J4LNSa2B5Jx6s3h) |
 
 [Документация на русском языке.](docs/README_RU.md)
 
@@ -82,7 +85,7 @@ To start receiving notifications, you need to call the bot.StartReceivingNotific
 But before that you need to add a handler; this can be done in two ways. You can do this directly in the `main` function
 as in the `base` example:
 
-Link to example: [base.go](examples/base/base.go).
+Link to example: [base.go](examples/base/main/base.go).
 
 ```go
 package base
@@ -221,7 +224,7 @@ You can receive not only incoming messages, but also outgoing ones, as well as t
 hooks.
 To do this, simply add a new handler to the scene or main function. Each scene can have multiple handlers.
 
-Link to example: [event.go](examples/event/event.go).
+Link to example: [event.go](examples/event/main/event.go).
 
 ```go
 package event
@@ -271,7 +274,7 @@ To get incoming webhooks, you have to sequentially call two methods <a href="htt
 ### How to filter incoming messages
 
 Filtering by webhook type occurs automatically at the handler creation level, for
-example - [event.go](examples/event/event.go).
+example - [event.go](examples/event/main/event.go).
 Other types of filters are implemented using the `Filter` method, which takes `map[string][]string{}` as a parameter.
 The key of this map is a string with the name of the parameter by which filtering will occur, the value of the map is a
 slice with a set of expected values.
@@ -287,7 +290,7 @@ If a method filters several parameters at the same time, the method returns `tru
 | `chatId`                          | Returns `true` if at least one expected value equals the message's chat ID                                    |
 | `messageType`                     | Returns `true` if at least one expected value is equal to the value of the `messageType` field in the webhook |
 
-Link to example: [filter.go](examples/filter/filter.go).
+Link to example: [filter.go](examples/filter/main/filter.go).
 
 ```go
 package filter
@@ -342,7 +345,7 @@ To manage the state, you need to use the methods of the `Notification` structure
 
 As an example, a simple bot was created to simulate user registration.
 
-Link to example: [state.go](examples/state/state.go).
+Link to example: [state.go](examples/state/main/state.go).
 
 ```go
 package state
@@ -433,7 +436,7 @@ As an example, a bot was created that demonstrates sending methods of the `Notif
 The bot is started with the command - /start
 After launching, you need to select a method from the menu, and the bot will execute it.
 
-Link to example: [full,go](examples/full/full.go).
+Link to example: [full,go](examples/full/main/full.go).
 
 The start scene waits for the `/start` command, after which it sends the menu and activates the next `PickMethodScene`.
 `PickMethodScene` waits for the user's response and executes the selected method.
