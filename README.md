@@ -106,6 +106,37 @@ func main() {
 }
 ```
 
+Or you can to call the bot.StartListeningForWebhooks(port int, endpoint, webhookUrl string) method on the bot (You still need to add a handler beforehand).
+The bot.StartListeningForWebhooks requires 3 arguments to run:
+1. port (int): The port number on which the webhook listener will be started.
+2. endpoint (string): The specific endpoint or URL pattern where the webhook listener will receive incoming requests.
+3. webhookUrl (string): The URL to which webhook notifications will be sent. This URL should forward incoming requests to localhost:port/endpoint. If non-empty string is provided webhookUrl of the instance will be set to webhookUrl from the arguments, otherwise no changes to instance settings will be applied.
+See example:
+
+Link to example: [webhook.go](examples/webhook/webhook.go).
+
+```go
+package webhook
+
+import (
+	"github.com/green-api/whatsapp-chatbot-golang"
+)
+
+func Start() {
+	bot := whatsapp_chatbot_golang.NewBot("INSTANCE_ID", "TOKEN")
+
+	bot.IncomingMessageHandler(func(message *whatsapp_chatbot_golang.Notification) {
+		if message.Filter(map[string][]string{"text": {"test"}}) {
+			message.AnswerWithText("Well done! You have write \"test\".")
+		} else {
+			message.AnswerWithText("Write \"test\"!")
+		}
+	})
+
+	bot.StartListeningForWebhooks(6000, "/", "https://your-domain-that-forwards-webhooks-to-bot.com")
+}
+```
+
 Or if you have complex nested scripts, it is better to use Scenes as in the `baseScene` example.
 Using Scenes is easy - put the bot logic into a separate structure that implements the `Scene` interface, and add it to
 the bot using the `bot.SetStartScene(StartScene{})` method.

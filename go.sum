@@ -8,6 +8,8 @@ github.com/green-api/whatsapp-api-client-golang v0.6.2 h1:jD1ti5YceYIsKlTiZ857Nv
 github.com/green-api/whatsapp-api-client-golang v0.6.2/go.mod h1:0/hbO88FzFWZMie53Gm8j2L7h6pMtvLjPyrois7YTQU=
 github.com/green-api/whatsapp-api-client-golang v0.6.3-0.20240204214127-15a9d34bf546 h1:gTyJYSTENPZGtSGyZYmHVarMC9J4IP4QA+vujbwPi+I=
 github.com/green-api/whatsapp-api-client-golang v0.6.3-0.20240204214127-15a9d34bf546/go.mod h1:PruawIYBXbR1CULTa1n9SBZk5uD+/oUCBAkP5FyHhu4=
+github.com/green-api/whatsapp-api-webhook-server-golang v0.2.0 h1:rUhxQL16L1TYz7jAwIgm33d/gPEA+aF02VpkNJca9yE=
+github.com/green-api/whatsapp-api-webhook-server-golang v0.2.0/go.mod h1:WbT1iCJaxqYQCiSQf9dvvhVP9HtFPua1rG2ikhnXubw=
 golang.org/x/net v0.19.0 h1:zTwKpTd2XuCqf8huc7Fo2iSy+4RHPd10s4KzeTnVr1c=
 golang.org/x/net v0.19.0/go.mod h1:CfAk/cbD4CthTvqiEl8NpboMuiuOYsAr/7NOjZJtv1U=
 golang.org/x/net v0.20.0 h1:aCL9BSgETF1k+blQaYUBx9hJ9LOGP3gAVemcZlf1Kpo=

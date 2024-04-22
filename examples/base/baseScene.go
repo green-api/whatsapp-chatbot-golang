@@ -4,7 +4,7 @@ import (
 	"github.com/green-api/whatsapp-chatbot-golang"
 )
 
-func main() {
+func Start() {
 	bot := whatsapp_chatbot_golang.NewBot("INSTANCE_ID", "TOKEN")
 
 	bot.SetStartScene(StartScene{})
