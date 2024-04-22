@@ -110,7 +110,8 @@ Or you can to call the bot.StartListeningForWebhooks(port int, endpoint, webhook
 The bot.StartListeningForWebhooks requires 3 arguments to run:
 1. port (int): The port number on which the webhook listener will be started.
 2. endpoint (string): The specific endpoint or URL pattern where the webhook listener will receive incoming requests.
-3. webhookUrl (string): The URL to which webhook notifications will be sent. This URL should forward incoming requests to localhost:port/endpoint. If non-empty string is provided webhookUrl of the instance will be set to webhookUrl from the arguments, otherwise no changes to instance settings will be applied.
+3. webhookToken (string): This field is used for webhook request authentication. It expects a token prefixed with "Bearer " in the request's Authorization header. If provided and matching, the request is authenticated. If left empty, authentication is not required for incoming requests.
+4. webhookUrl (string): The URL to which webhook notifications will be sent. This URL should forward incoming requests to localhost:port/endpoint. If non-empty string is provided webhookUrl of the instance will be set to webhookUrl from the arguments, otherwise no changes to instance settings will be applied.
 See example:
 
 Link to example: [webhook.go](examples/webhook/webhook.go).

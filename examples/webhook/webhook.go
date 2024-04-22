@@ -15,5 +15,5 @@ func Start() {
 		}
 	})
 
-	bot.StartListeningForWebhooks(6000, "/", "https://your-domain-that-forwards-webhooks-to-bot.com")
+	bot.StartListeningForWebhooks(6000, "/", "", "https://your-domain-that-forwards-webhooks-to-bot.com")
 }

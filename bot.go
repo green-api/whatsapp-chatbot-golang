@@ -31,7 +31,7 @@ func NewBot(IDInstance string, APITokenInstance string) *Bot {
 	}
 }
 
-func (b *Bot) StartListeningForWebhooks(port int, endpoint, webhookUrl string) {
+func (b *Bot) StartListeningForWebhooks(port int, endpoint, webhookToken, webhookUrl string) {
 	if b.CleanNotificationQueue {
 		b.DeleteAllNotifications()
 	}
@@ -47,13 +47,14 @@ func (b *Bot) StartListeningForWebhooks(port int, endpoint, webhookUrl string) {
 	}
 
 	webhookListener := webhook.Webhook{
-		Address: fmt.Sprintf(":%d", port),
-		Pattern: endpoint,
+		Address:      fmt.Sprintf(":%d", port),
+		Pattern:      endpoint,
+		WebhookToken: webhookToken,
 	}
 
 	err := webhookListener.StartServer(b.handleWebhook)
 	if err != nil {
-		log.Println("Failed to handle webhook")
+		log.Println("Failed to handle webhook: " + err.Error())
 	}
 }
 
