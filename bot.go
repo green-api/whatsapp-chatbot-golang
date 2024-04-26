@@ -1,9 +1,12 @@
 package whatsapp_chatbot_golang
 
 import (
-	"github.com/green-api/whatsapp-api-client-golang/pkg/api"
+	"fmt"
 	"log"
 	"time"
+
+	"github.com/green-api/whatsapp-api-client-golang/pkg/api"
+	webhook "github.com/green-api/whatsapp-api-webhook-server-golang/pkg"
 )
 
 type Bot struct {
@@ -26,6 +29,38 @@ func NewBot(IDInstance string, APITokenInstance string) *Bot {
 		Publisher:              Publisher{},
 		ErrorChannel:           make(chan error, 1),
 	}
+}
+
+func (b *Bot) StartListeningForWebhooks(port int, endpoint, webhookToken, webhookUrl string) {
+	if b.CleanNotificationQueue {
+		b.DeleteAllNotifications()
+	}
+
+	b.isStart = true
+	log.Println("Bot Start receive webhooks")
+
+	if webhookUrl != "" {
+		log.Println("Setting webhook URL, it may tale up to 5 minutes. Please, be patient")
+		b.Methods().Account().SetSettings(map[string]interface{}{
+			"webhookUrl": webhookUrl,
+		})
+	}
+
+	webhookListener := webhook.Webhook{
+		Address:      fmt.Sprintf(":%d", port),
+		Pattern:      endpoint,
+		WebhookToken: webhookToken,
+	}
+
+	err := webhookListener.StartServer(b.handleWebhook)
+	if err != nil {
+		log.Println("Failed to handle webhook: " + err.Error())
+	}
+}
+
+func (b *Bot) handleWebhook(body map[string]interface{}) {
+	notification := NewNotification(body, b.StateManager, &b.GreenAPI, &b.ErrorChannel)
+	b.startCurrentScene(notification)
 }
 
 func (b *Bot) StartReceivingNotifications() {

@@ -100,6 +100,37 @@ func main() {
 }
 ```
 
+Или вы можете вызвать метод bot.StartListeningForWebhooks(port int, endpoint, webhookUrl string) на боте (вам все равно нужно предварительно добавить обработчик).
+Для выполнения bot.StartListeningForWebhooks требуется 3 аргумента:
+1. порт (int): Номер порта, на котором будет запущен webhook-слушатель.
+3. webhookToken (string): Это поле используется для аутентификации запроса webhook. Оно ожидает токен с префиксом "Bearer " в заголовке Authorization запроса. Если он предоставлен и соответствует, запрос аутентифицируется. Если оставить поле пустым, аутентификация для входящих запросов не требуется.
+2. endpoint (string): Определенная конечная точка или шаблон URL, на котором webhook-слушатель будет получать входящие запросы.
+4. webhookUrl (string): URL, на который будут отправляться уведомления webhook. Этот URL должен перенаправлять входящие запросы на localhost:port/endpoint. Если указана непустая строка, то webhookUrl инстанса будет установлен на webhookUrl из аргументов, в противном случае изменения в настройках инстанса не будут применены.
+См. пример:
+Ссылка на пример: [webhook.go](examples/webhook/webhook.go).
+
+```go
+package webhook
+
+import (
+	"github.com/green-api/whatsapp-chatbot-golang"
+)
+
+func Start() {
+	bot := whatsapp_chatbot_golang.NewBot("INSTANCE_ID", "TOKEN")
+
+	bot.IncomingMessageHandler(func(message *whatsapp_chatbot_golang.Notification) {
+		if message.Filter(map[string][]string{"text": {"test"}}) {
+			message.AnswerWithText("Well done! You have write \"test\".")
+		} else {
+			message.AnswerWithText("Write \"test\"!")
+		}
+	})
+
+	bot.StartListeningForWebhooks(6000, "/", "", "https://your-domain-that-forwards-webhooks-to-bot.com")
+}
+```
+
 Если у вас сложные вложенные сценарии, лучше использовать сцены как в примере `baseScene`. 
 Пользоваться сценами просто - достаточно вынести логику бота в отдельную структуру, которая реализовывает интерфейс `Scene`, и добавить ее в бот методом `bot.SetStartScene(StartScene{})`.
 Стартовая сцена может вызвать следующую с помощью метода `message.ActivateNextScene(NextScene{})`, тогда следующий вебхук попадет уже в новую сцену, это позволит разделить бота на отдельные части и сделает код более читаемым и редактируемым:
