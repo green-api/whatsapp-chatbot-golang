@@ -1,4 +1,7 @@
 # whatsapp-chatbot-golang
+| Support links                                                                                                                                                                                                                                                                                                                                                                                                                           | Guides & News                                                                                                                                  |
+|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------|
+| [![Support](https://img.shields.io/badge/support--mail-D14836?style=for-the-badge&logo=gmail&logoColor=white)](mailto:support@greenapi.com) [![Support](https://img.shields.io/badge/Telegram-2CA5E0?style=for-the-badge&logo=telegram&logoColor=white)](https://t.me/greenapi_support_eng_bot) [![Support](https://img.shields.io/badge/WhatsApp-25D366?style=for-the-badge&logo=whatsapp&logoColor=white)](https://wa.me/77273122366) | [![Guides](https://img.shields.io/badge/YouTube-%23FF0000.svg?style=for-the-badge&logo=YouTube&logoColor=white)](https://www.youtube.com/@greenapi-en) [![News](https://img.shields.io/badge/Telegram-2CA5E0?style=for-the-badge&logo=telegram&logoColor=white)](https://t.me/green_api) [![News](https://img.shields.io/badge/WhatsApp-25D366?style=for-the-badge&logo=whatsapp&logoColor=white)](https://whatsapp.com/channel/0029VaLj6J4LNSa2B5Jx6s3h) |
 
 whatsapp-chatbot-golang - библиотека для интеграции с мессенджером WhatsApp через API
 сервиса [green-api.com](https://green-api.com/). Чтобы воспользоваться библиотекой, нужно получить регистрационный токен
@@ -76,7 +79,7 @@ APITokenInstance := os.Getenv("API_TOKEN_INSTANCE")
 Чтобы начать получать уведомления, необходимо вызвать у бота метод `bot.StartReceivingNotifications()`.
 Но перед этим необходимо добавить обработчик, это можно сделать двумя способами. Вы можете сделать это сразу в функции `main` как в примере `base`.
 
-Ссылка на пример: [base.go](../examples/base/base.go).
+Ссылка на пример: [base.go](../examples/base/main/base.go).
 
 ```go
 package base
@@ -210,7 +213,7 @@ func main() {
 Получать можно не только входящие сообщения, но и исходящие, а так же их статусы и любые другие типы веб хуков.
 Для этого просто добавьте в сцену или в функцию main новый обработчик. В каждой сцене может быть несколько обработчиков.
 
-Ссылка на пример: [event.go](../examples/event/event.go).
+Ссылка на пример: [event.go](../examples/event/main/event.go).
 
 ```go
 package event
@@ -259,7 +262,7 @@ func (s StartScene) Start(bot *cb.Bot) {
 
 ### Как фильтровать входящие сообщения
 
-Фильтрация по типу вебхука происходит автоматически на уровне создания обработчика, пример - [event.go](../examples/event/event.go).
+Фильтрация по типу вебхука происходит автоматически на уровне создания обработчика, пример - [event.go](../examples/event/main/event.go).
 Другие типы фильтров реализованы с помощью метода `Filter` который принимает в качестве параметра `map[string][]string{}`.
 Ключом данной карты служит строка с именем параметра по которому будет происходить фильтрация, значение карты - срез с набором ожидаемых значений.
 Если в фильтре по параметру несколько ожидаемых значений, то метод возвращает `true` если хотя бы одно ожидаемое значение совпадает с полем вебхука. 
@@ -273,7 +276,7 @@ func (s StartScene) Start(bot *cb.Bot) {
 | `chatId`                        | Возвращает `true`, если хотя бы одно ожидаемое значение равно идентификатору чата сообщения                  |
 | `messageType`                   | Возвращает `true`, хотя бы одно ожидаемое значение равно значению поля `messageType` в вебхуке               |
 
-Ссылка на пример: [filter.go](../examples/filter/filter.go).
+Ссылка на пример: [filter.go](../examples/filter/main/filter.go).
 
 ```go
 package filter
@@ -325,7 +328,7 @@ func (s StartScene) Start(bot *cb.Bot) {
 
 В качестве примера был создан простой бот для имитации регистрации пользователя.
 
-Ссылка на пример: [state.go](../examples/state/state.go).
+Ссылка на пример: [state.go](../examples/state/main/state.go).
 
 ```go
 package state
@@ -415,7 +418,7 @@ func main() {
 Запуск бота происходит командой - /start
 После запуска необходимо выбрать метод из меню, и бот выполнит его.
 
-Ссылка на пример: [full,go](../examples/full/full.go).
+Ссылка на пример: [full,go](../examples/full/main/full.go).
 
 Стартовая сцена ждет команду `/start`, после чего отправляет меню и активирует следующую сцену `PickMethodScene`.
 `PickMethodScene` ждет ответа пользователя и выполняет выбранный метод.

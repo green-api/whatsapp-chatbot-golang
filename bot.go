@@ -4,6 +4,7 @@ import (
 	"github.com/green-api/whatsapp-api-client-golang/pkg/api"
 	"log"
 	"time"
+	"strings"
 )
 
 type Bot struct {
@@ -16,7 +17,7 @@ type Bot struct {
 }
 
 func NewBot(IDInstance string, APITokenInstance string) *Bot {
-	return &Bot{
+	bot := &Bot{
 		GreenAPI: api.GreenAPI{
 			IDInstance:       IDInstance,
 			APITokenInstance: APITokenInstance,
@@ -26,6 +27,26 @@ func NewBot(IDInstance string, APITokenInstance string) *Bot {
 		Publisher:              Publisher{},
 		ErrorChannel:           make(chan error, 1),
 	}
+
+	go func() {
+		for err := range bot.ErrorChannel {
+			resultStr := err.Error()
+			ind := strings.Index(resultStr, ". Body")
+			if ind != -1 {
+				resultStr = resultStr[:ind]
+			}
+			if strings.Contains(resultStr, "403") {
+				resultStr += " Forbidden (probably instance data is wrong or not specified)"
+			} else if strings.Contains(resultStr, "500") {
+				resultStr = ""
+			}
+			if resultStr != "" {
+				log.Printf("Error: %v\n", resultStr)
+			}
+		}
+	}()
+
+	return bot
 }
 
 func (b *Bot) StartReceivingNotifications() {

@@ -1,4 +1,4 @@
-package base
+package main
 
 import (
 	"github.com/green-api/whatsapp-chatbot-golang"
