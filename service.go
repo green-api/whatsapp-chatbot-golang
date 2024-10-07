@@ -1,6 +1,11 @@
 package whatsapp_chatbot_golang
 
-func (n *Notification) AnswerWithText(text string) map[string]interface{} {
+func (n *Notification) AnswerWithText(text string, linkPreview ...string) map[string]interface{} {
+	_linkPreview := true
+	if len(linkPreview) > 0 && linkPreview[0] == "false" {
+		_linkPreview = false
+	}
+
 	chatId := tryParseChatId(n)
 
 	idMessage := n.Body["idMessage"].(string)
@@ -8,6 +13,7 @@ func (n *Notification) AnswerWithText(text string) map[string]interface{} {
 		"chatId":          chatId,
 		"message":         text,
 		"quotedMessageId": idMessage,
+		"linkPreview":     _linkPreview,
 	})
 
 	if err != nil {
@@ -111,11 +117,17 @@ func (n *Notification) AnswerWithContact(contact map[string]interface{}) map[str
 	return response
 }
 
-func (n *Notification) SendText(text string) map[string]interface{} {
+func (n *Notification) SendText(text string, linkPreview ...string) map[string]interface{} {
+	_linkPreview := true
+	if len(linkPreview) > 0 && linkPreview[0] == "false" {
+		_linkPreview = false
+	}
+
 	chatId := tryParseChatId(n)
 	response, err := n.GreenAPI.Methods().Sending().SendMessage(map[string]interface{}{
-		"chatId":  chatId,
-		"message": text,
+		"chatId":      chatId,
+		"message":     text,
+		"linkPreview": _linkPreview,
 	})
 
 	if err != nil {

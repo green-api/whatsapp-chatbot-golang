@@ -2,6 +2,7 @@ package main
 
 import (
 	"github.com/green-api/whatsapp-chatbot-golang"
+	"net/http"
 )
 
 func main() {
@@ -44,7 +45,7 @@ func (s PickMethodScene) Start(bot *whatsapp_chatbot_golang.Bot) {
 		}
 
 		if message.Filter(map[string][]string{"text": {"2"}}) {
-			message.AnswerWithText("Give me a link for a file, for example: https://th.bing.com/th/id/OIG.gq_uOPPdJc81e_v0XAei")
+			message.AnswerWithText("Give me a link for a file, for example: https://raw.githubusercontent.com/green-api/whatsapp-demo-chatbot-golang/refs/heads/master/assets/about_go.jpg")
 			message.ActivateNextScene(InputLinkScene{})
 		}
 
@@ -89,8 +90,20 @@ func (s InputLinkScene) Start(bot *whatsapp_chatbot_golang.Bot) {
 	bot.IncomingMessageHandler(func(message *whatsapp_chatbot_golang.Notification) {
 		if message.Filter(map[string][]string{"regex": {"^https://[^\\s]+$"}}) {
 			text, _ := message.Text()
-			message.AnswerWithUrlFile(text, "testFile", "This is your file!")
-			message.ActivateNextScene(PickMethodScene{})
+
+			resp, err := http.Get(text)
+			if err != nil {
+				message.AnswerWithText("URL недоступен, пожалуйста, попробуйте другую ссылку.")
+				return
+			}
+			defer resp.Body.Close()
+
+			if resp.StatusCode == http.StatusOK {
+				message.AnswerWithUrlFile(text, "testFile", "This is your file!")
+				message.ActivateNextScene(PickMethodScene{})
+			} else {
+				message.AnswerWithText("URL недоступен, пожалуйста, попробуйте другую ссылку.")
+			}
 		} else {
 			message.AnswerWithText("Ссылка не должна содержать пробелы и должна начинаться на https://")
 		}
