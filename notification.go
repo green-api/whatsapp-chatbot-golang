@@ -2,18 +2,18 @@ package whatsapp_chatbot_golang
 
 import (
 	"errors"
-	"github.com/green-api/whatsapp-api-client-golang/pkg/api"
+	greenapi "github.com/green-api/whatsapp-api-client-golang-v2"
 )
 
 type Notification struct {
 	Body map[string]interface{}
 	StateManager
-	*api.GreenAPI
+	greenapi.GreenAPI
 	StateId      string
 	ErrorChannel *chan error
 }
 
-func NewNotification(body map[string]interface{}, stateManager StateManager, greenAPI *api.GreenAPI, errorChannel *chan error) *Notification {
+func NewNotification(body map[string]interface{}, stateManager StateManager, greenAPI greenapi.GreenAPI, errorChannel *chan error) *Notification {
 	notification := Notification{Body: body, StateManager: stateManager, GreenAPI: greenAPI, StateId: "", ErrorChannel: errorChannel}
 	notification.createStateId()
 	return &notification

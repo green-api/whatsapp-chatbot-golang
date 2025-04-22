@@ -1,14 +1,16 @@
 package whatsapp_chatbot_golang
 
 import (
-	"github.com/green-api/whatsapp-api-client-golang/pkg/api"
+	"encoding/json"
+	"fmt"
+	greenapi "github.com/green-api/whatsapp-api-client-golang-v2"
 	"log"
-	"time"
 	"strings"
+	"time"
 )
 
 type Bot struct {
-	api.GreenAPI
+	greenapi.GreenAPI
 	CleanNotificationQueue bool
 	StateManager
 	Publisher
@@ -18,7 +20,9 @@ type Bot struct {
 
 func NewBot(IDInstance string, APITokenInstance string) *Bot {
 	bot := &Bot{
-		GreenAPI: api.GreenAPI{
+		GreenAPI: greenapi.GreenAPI{
+			APIURL:           "https://api.green-api.com",
+			MediaURL:         "https://media.green-api.com",
 			IDInstance:       IDInstance,
 			APITokenInstance: APITokenInstance,
 		},
@@ -57,25 +61,35 @@ func (b *Bot) StartReceivingNotifications() {
 	b.isStart = true
 	log.Print("Bot Start receive webhooks")
 
+	receiver := b.Receiving()
 	for b.isStart == true {
-		response, err := b.Methods().Receiving().ReceiveNotification()
+		response, err := receiver.ReceiveNotification()
 		if err != nil {
 			b.ErrorChannel <- err
 			time.Sleep(5000)
 			continue
 		}
-
-		if response["body"] == nil {
-			log.Print("webhook queue is empty")
+		if response == nil || len(response.Body) == 0 || string(response.Body) == "null" {
 			continue
-
 		} else {
-			responseBody := response["body"].(map[string]interface{})
-			notification := NewNotification(responseBody, b.StateManager, &b.GreenAPI, &b.ErrorChannel)
+			var responseMapTopLevel map[string]interface{}
+			errUnmarshal := json.Unmarshal(response.Body, &responseMapTopLevel)
+			if errUnmarshal != nil {
+				log.Printf("Error unmarshaling webhook top level: %v. Raw: %s", errUnmarshal, string(response.Body))
+				b.ErrorChannel <- fmt.Errorf("failed to unmarshal webhook top level: %w", errUnmarshal)
+				continue
+			}
+
+			actualBodyMap := responseMapTopLevel["body"].(map[string]interface{})
+			receiptIdRaw := responseMapTopLevel["receiptId"]
+			log.Printf("Webhook received - %+v", responseMapTopLevel)
+			notification := NewNotification(actualBodyMap, b.StateManager, b.GreenAPI, &b.ErrorChannel)
 
 			b.startCurrentScene(notification)
 
-			_, err := b.Methods().Receiving().DeleteNotification(int(response["receiptId"].(float64)))
+			receiptId := int(receiptIdRaw.(float64))
+
+			_, err = receiver.DeleteNotification(receiptId)
 			if err != nil {
 				b.ErrorChannel <- err
 				continue
@@ -95,17 +109,28 @@ func (b *Bot) StopReceivingNotifications() {
 
 func (b *Bot) DeleteAllNotifications() {
 	log.Print("deleting notifications Start...")
+	receiver := b.Receiving()
 	for {
-		response, _ := b.Methods().Receiving().ReceiveNotification()
+		response, errRecv := receiver.ReceiveNotification(greenapi.OptionalReceiveTimeout(2))
+		if errRecv != nil {
+			log.Printf("Error receiving during delete all: %v", errRecv)
+			time.Sleep(5000)
+			continue
+		}
 
-		if response["body"] == nil {
+		if response == nil || len(response.Body) == 0 || string(response.Body) == "null" {
 			log.Print("deleting notifications finished!")
 			break
-
 		} else {
-			_, err := b.Methods().Receiving().DeleteNotification(int(response["receiptId"].(float64)))
-			if err != nil {
-				b.ErrorChannel <- err
+			var responseMapTopLevel map[string]interface{}
+			_ = json.Unmarshal(response.Body, &responseMapTopLevel)
+
+			receiptIdRaw := responseMapTopLevel["receiptId"]
+			receiptId := int(receiptIdRaw.(float64))
+
+			_, errDel := receiver.DeleteNotification(receiptId)
+			if errDel != nil {
+				b.ErrorChannel <- errDel
 			}
 		}
 	}

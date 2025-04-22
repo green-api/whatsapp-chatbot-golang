@@ -1,11 +1,15 @@
 # whatsapp-chatbot-golang
-| Support links                                                                                                                                                                                                                                                                                                                                                                                                                           | Guides & News                                                                                                                                  |
-|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------|
+
+| Support links                                                                                                                                                                                                                                                                                                                                                                                                                           | Guides & News                                                                                                                                                                                                                                                                                                                                                                                                                                             |
+|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | [![Support](https://img.shields.io/badge/support--mail-D14836?style=for-the-badge&logo=gmail&logoColor=white)](mailto:support@greenapi.com) [![Support](https://img.shields.io/badge/Telegram-2CA5E0?style=for-the-badge&logo=telegram&logoColor=white)](https://t.me/greenapi_support_eng_bot) [![Support](https://img.shields.io/badge/WhatsApp-25D366?style=for-the-badge&logo=whatsapp&logoColor=white)](https://wa.me/77273122366) | [![Guides](https://img.shields.io/badge/YouTube-%23FF0000.svg?style=for-the-badge&logo=YouTube&logoColor=white)](https://www.youtube.com/@greenapi-en) [![News](https://img.shields.io/badge/Telegram-2CA5E0?style=for-the-badge&logo=telegram&logoColor=white)](https://t.me/green_api) [![News](https://img.shields.io/badge/WhatsApp-25D366?style=for-the-badge&logo=whatsapp&logoColor=white)](https://whatsapp.com/channel/0029VaLj6J4LNSa2B5Jx6s3h) |
 
 whatsapp-chatbot-golang - библиотека для интеграции с мессенджером WhatsApp через API
 сервиса [green-api.com](https://green-api.com/). Чтобы воспользоваться библиотекой, нужно получить регистрационный токен
 и ID аккаунта в [личном кабинете](https://console.green-api.com/). Есть бесплатный тариф аккаунта разработчика.
+
+> **Важное примечание:** Начиная с версии 1.0.0, библиотека использует `whatsapp-api-client-golang-v2` вместо
+> `whatsapp-api-client-golang`.
 
 ## API
 
@@ -34,15 +38,16 @@ go get github.com/green-api/whatsapp-chatbot-golang
 
 ## Импорт
 
-```
+```go
 import (
-	"github.com/green-api/whatsapp-chatbot-golang/"
+"github.com/green-api/whatsapp-chatbot-golang/chatbot"
 )
 ```
 
 ## Настройки
 
-Перед запуском бота необходимо включить входящие уведомления в настройках экземпляра с помощью <a href="https://green-api.com/en/docs/api/account/SetSettings/">метода SetSettings</a>.
+Перед запуском бота необходимо включить входящие уведомления в настройках экземпляра с
+помощью <a href="https://green-api.com/en/docs/api/account/SetSettings/">метода SetSettings</a>.
 
 ```json
 "incomingWebhook": "yes",
@@ -56,20 +61,22 @@ import (
 
 Создать инстанс можно в личном кабинете по [ссылке](https://console.green-api.com/). Нажмите создать и выберите тариф.
 Чтобы начать получать входящие уведомления, нужно настроить инстанс. Открываем страницу личного кабинета
-по [ссылке](https://console.green-api.com/instanceList). Выбираем инстанс из списка и кликаем на него. Нажимаем **Изменить**. В
+по [ссылке](https://console.green-api.com/instanceList). Выбираем инстанс из списка и кликаем на него. Нажимаем *
+*Изменить**. В
 категории **Уведомления** включаем все вебхуки которые необходимо получать.
 
 ### Как инициализировать объект
 
-Для инициации бота нужно воспользоваться методом `NewBot` из библиотеки и указать номер инстанса и токен из личного кабинета.
+Для инициации бота нужно воспользоваться методом `NewBot` из библиотеки и указать номер инстанса и токен из личного
+кабинета.
 
-```
+```go
 bot := chatbot.NewBot("INSTANCE_ID", "TOKEN")
 ```
 
 Обратите внимание, что ключи можно получать из переменных среды:
 
-```
+```go
 IDInstance := os.Getenv("ID_INSTANCE")
 APITokenInstance := os.Getenv("API_TOKEN_INSTANCE")
 ```
@@ -77,15 +84,16 @@ APITokenInstance := os.Getenv("API_TOKEN_INSTANCE")
 ### Как начать получать сообщения и отвечать на них
 
 Чтобы начать получать уведомления, необходимо вызвать у бота метод `bot.StartReceivingNotifications()`.
-Но перед этим необходимо добавить обработчик, это можно сделать двумя способами. Вы можете сделать это сразу в функции `main` как в примере `base`.
+Но перед этим необходимо добавить обработчик, это можно сделать двумя способами. Вы можете сделать это сразу в функции
+`main` как в примере `base`.
 
 Ссылка на пример: [base.go](../examples/base/main/base.go).
 
 ```go
-package base
+package main
 
 import (
-	"github.com/green-api/whatsapp_chatbot_golang/chatbot"
+	"github.com/green-api/whatsapp-chatbot-golang/chatbot"
 )
 
 func main() {
@@ -103,15 +111,18 @@ func main() {
 }
 ```
 
-Если у вас сложные вложенные сценарии, лучше использовать сцены как в примере `baseScene`. 
-Пользоваться сценами просто - достаточно вынести логику бота в отдельную структуру, которая реализовывает интерфейс `Scene`, и добавить ее в бот методом `bot.SetStartScene(StartScene{})`.
-Стартовая сцена может вызвать следующую с помощью метода `message.ActivateNextScene(NextScene{})`, тогда следующий вебхук попадет уже в новую сцену, это позволит разделить бота на отдельные части и сделает код более читаемым и редактируемым:
+Если у вас сложные вложенные сценарии, лучше использовать сцены как в примере `baseScene`.
+Пользоваться сценами просто - достаточно вынести логику бота в отдельную структуру, которая реализовывает интерфейс
+`Scene`, и добавить ее в бот методом `bot.SetStartScene(StartScene{})`.
+Стартовая сцена может вызвать следующую с помощью метода `message.ActivateNextScene(NextScene{})`, тогда следующий
+вебхук попадет уже в новую сцену, это позволит разделить бота на отдельные части и сделает код более читаемым и
+редактируемым:
 
 ```go
-package base
+package main
 
 import (
-	"github.com/green-api/whatsapp_chatbot_golang/chatbot"
+	"github.com/green-api/whatsapp-chatbot-golang/chatbot"
 )
 
 func main() {
@@ -124,6 +135,7 @@ func main() {
 
 type StartScene struct {
 }
+
 func (s StartScene) Start(bot *chatbot.Bot) {
 	bot.IncomingMessageHandler(func(message *chatbot.Notification) {
 		if message.Filter(map[string][]string{"text": {"test"}}) {
@@ -138,6 +150,7 @@ func (s StartScene) Start(bot *chatbot.Bot) {
 
 type SecondScene struct {
 }
+
 func (s SecondScene) Start(bot *chatbot.Bot) {
 	bot.IncomingMessageHandler(func(message *chatbot.Notification) {
 		if message.Filter(map[string][]string{"text": {"second scene"}}) {
@@ -150,15 +163,17 @@ func (s SecondScene) Start(bot *chatbot.Bot) {
 }
 ```
 
-Если вам нужно чтобы при создании нового состояния, оно уже имело некоторые дефолтные значения, необходимо изменить поле `InitData` у структуры `StateManager`.
+Если вам нужно чтобы при создании нового состояния, оно уже имело некоторые дефолтные значения, необходимо изменить поле
+`InitData` у структуры `StateManager`.
 В стандартной имплементации `MapStateManager` это делается так:
 
 ```go
 package main
 
 import (
-	"github.com/green-api/whatsapp_chatbot_golang/chatbot"
-	"github.com/green-api/whatsapp_chatbot_golang/examples/full"
+	greenapi "github.com/green-api/whatsapp-api-client-golang-v2"
+	"github.com/green-api/whatsapp-chatbot-golang/chatbot"
+	"github.com/green-api/whatsapp-chatbot-golang/examples/full"
 )
 
 func main() {
@@ -177,16 +192,18 @@ func main() {
 }
 ```
 
-Обратите внимание, что во время выполнения запросов могут возникать ошибки, чтобы ваша программа не прерывалась из-за них,
-вам необходимо обрабатывать ошибки. Все ошибки библиотеки отправляются в канал `ErrorChannel`, вы можете обработать их например таким способом:
+Обратите внимание, что во время выполнения запросов могут возникать ошибки, чтобы ваша программа не прерывалась из-за
+них,
+вам необходимо обрабатывать ошибки. Все ошибки библиотеки отправляются в канал `ErrorChannel`, вы можете обработать их
+например таким способом:
 
 ```go
 package main
 
 import (
 	"fmt"
-	"github.com/green-api/whatsapp_chatbot_golang/chatbot"
-	"github.com/green-api/whatsapp_chatbot_golang/examples/full"
+	"github.com/green-api/whatsapp-chatbot-golang/chatbot"
+	"github.com/green-api/whatsapp-chatbot-golang/examples/full"
 )
 
 func main() {
@@ -194,7 +211,7 @@ func main() {
 
 	bot.SetStartScene(full.StartScene{})
 
-    //Все ошибки будут просто выводиться в консоль
+	//Все ошибки будут просто выводиться в консоль
 	go func() {
 		select {
 		case err := <-bot.ErrorChannel:
@@ -216,9 +233,11 @@ func main() {
 Ссылка на пример: [event.go](../examples/event/main/event.go).
 
 ```go
-package event
+package main
 
-import cb "github.com/green-api/whatsapp_chatbot_golang/chatbot"
+import (
+	cb "github.com/green-api/whatsapp-chatbot-golang/chatbot"
+)
 
 type StartScene struct {
 }
@@ -256,17 +275,30 @@ func (s StartScene) Start(bot *cb.Bot) {
 
 ### Получение уведомлений через HTTP API
 
-Получать входящие уведомления (сообщения, статусы) можно через HTTP API запросы по аналогии, как реализованы остальные методы Green API. При этом гарантируется хронологический порядок следования уведомлений в той последовательности, в которой они были получены FIFO. Все входящие уведомления сохраняются в очереди и ожидают своего получения в течение 24 часов.
+Получать входящие уведомления (сообщения, статусы) можно через HTTP API запросы по аналогии, как реализованы остальные
+методы Green API. При этом гарантируется хронологический порядок следования уведомлений в той последовательности, в
+которой они были получены FIFO. Все входящие уведомления сохраняются в очереди и ожидают своего получения в течение 24
+часов.
 
-Для получения входящих уведомлений требуется выполнить последовательно вызов двух методов <a href="https://green-api.com/docs/api/receiving/technology-http-api/ReceiveNotification/">ReceiveNotification</a> и <a href="https://green-api.com/docs/api/receiving/technology-http-api/DeleteNotification/">DeleteNotification</a>. Метод ReceiveNotification выполняет получение входящего уведомления. Метод DeleteNotification подтверждает успешное получение и обработку уведомления. Подробнее о методах смотрите в соответствующих разделах ReceiveNotification и DeleteNotification.
+Для получения входящих уведомлений требуется выполнить последовательно вызов двух
+методов <a href="https://green-api.com/docs/api/receiving/technology-http-api/ReceiveNotification/">
+ReceiveNotification</a> и <a href="https://green-api.com/docs/api/receiving/technology-http-api/DeleteNotification/">
+DeleteNotification</a>. Метод ReceiveNotification выполняет получение входящего уведомления. Метод DeleteNotification
+подтверждает успешное получение и обработку уведомления. Подробнее о методах смотрите в соответствующих разделах
+ReceiveNotification и DeleteNotification.
 
 ### Как фильтровать входящие сообщения
 
-Фильтрация по типу вебхука происходит автоматически на уровне создания обработчика, пример - [event.go](../examples/event/main/event.go).
-Другие типы фильтров реализованы с помощью метода `Filter` который принимает в качестве параметра `map[string][]string{}`.
-Ключом данной карты служит строка с именем параметра по которому будет происходить фильтрация, значение карты - срез с набором ожидаемых значений.
-Если в фильтре по параметру несколько ожидаемых значений, то метод возвращает `true` если хотя бы одно ожидаемое значение совпадает с полем вебхука. 
-Если метод фильтрует одновременно несколько параметров, то метод возвращает `true` только если все параметры прошли проверку.
+Фильтрация по типу вебхука происходит автоматически на уровне создания обработчика,
+пример - [event.go](../examples/event/main/event.go).
+Другие типы фильтров реализованы с помощью метода `Filter` который принимает в качестве параметра
+`map[string][]string{}`.
+Ключом данной карты служит строка с именем параметра по которому будет происходить фильтрация, значение карты - срез с
+набором ожидаемых значений.
+Если в фильтре по параметру несколько ожидаемых значений, то метод возвращает `true` если хотя бы одно ожидаемое
+значение совпадает с полем вебхука.
+Если метод фильтрует одновременно несколько параметров, то метод возвращает `true` только если все параметры прошли
+проверку.
 
 | Имена параметров для фильтрации | Описание                                                                                                     |
 |---------------------------------|--------------------------------------------------------------------------------------------------------------|
@@ -279,9 +311,11 @@ func (s StartScene) Start(bot *cb.Bot) {
 Ссылка на пример: [filter.go](../examples/filter/main/filter.go).
 
 ```go
-package filter
+package main
 
-import cb "github.com/green-api/whatsapp_chatbot_golang/chatbot"
+import (
+	cb "github.com/green-api/whatsapp-chatbot-golang/chatbot"
+)
 
 type StartScene struct {
 }
@@ -305,7 +339,6 @@ func (s StartScene) Start(bot *cb.Bot) {
 		}
 	})
 }
-
 ```
 
 ### Как управлять состоянием пользователя
@@ -315,26 +348,29 @@ func (s StartScene) Start(bot *cb.Bot) {
 Идентификатором состояния является идентификатор чата, то есть у каждого чата будет отдельное состояние.
 Чтобы управлять состоянием, нужно использовать методы структуры `Notification`:
 
-| Метод менеджера        | Описание                                     |
-|------------------------|----------------------------------------------|
-| `ActivateNextScene()`  | Активирует выбранную сцену.                  |
-| `GetCurrentScene()`    | Возвращает текущую сцену.                    |
-| `GetStateData()`       | Возвращает данные состояния выбранного чата. |
-| `SetStateData()`       | Заменяет данные состояния выбранного чата.   |
-| `UpdateStateData()`    | Обновляет данные состояния выбранного чата.  |
+| Метод менеджера       | Описание                                     |
+|-----------------------|----------------------------------------------|
+| `ActivateNextScene()` | Активирует выбранную сцену.                  |
+| `GetCurrentScene()`   | Возвращает текущую сцену.                    |
+| `GetStateData()`      | Возвращает данные состояния выбранного чата. |
+| `SetStateData()`      | Заменяет данные состояния выбранного чата.   |
+| `UpdateStateData()`   | Обновляет данные состояния выбранного чата.  |
 
-> Вебхуки типа incomingBlock, deviceInfo, stateInstanceChanged не привязаны к чату, поэтому не имеют собственного состояния.
-> Если вы хотите взаимодействовать с состояниями других чатов, отличных от чата обрабатываемого вебхука, вы можете использовать методы структуры `StateManager` напрямую. Методы `StateManager` делают тоже что и методы структуры `Notification`, но они ожидают дополнительный параметр `stateId`.
+> Вебхуки типа incomingBlock, deviceInfo, stateInstanceChanged не привязаны к чату, поэтому не имеют собственного
+> состояния.
+> Если вы хотите взаимодействовать с состояниями других чатов, отличных от чата обрабатываемого вебхука, вы можете
+> использовать методы структуры `StateManager` напрямую. Методы `StateManager` делают тоже что и методы структуры
+`Notification`, но они ожидают дополнительный параметр `stateId`.
 
 В качестве примера был создан простой бот для имитации регистрации пользователя.
 
 Ссылка на пример: [state.go](../examples/state/main/state.go).
 
 ```go
-package state
+package main
 
 import (
-	"github.com/green-api/whatsapp_chatbot_golang/chatbot"
+	"github.com/green-api/whatsapp-chatbot-golang/chatbot"
 )
 
 type StartScene struct {
@@ -384,15 +420,16 @@ func (s PasswordScene) Start(bot *chatbot.Bot) {
 }
 ```
 
-Если вам нужно чтобы при создании нового состояния, оно уже имело некоторые дефолтные значения, необходимо изменить поле `InitData` у структуры `StateManager`. 
+Если вам нужно чтобы при создании нового состояния, оно уже имело некоторые дефолтные значения, необходимо изменить поле
+`InitData` у структуры `StateManager`.
 В стандартной имплементации `MapStateManager` это делается так:
 
 ```go
 package main
 
 import (
-	"github.com/green-api/whatsapp_chatbot_golang/chatbot"
-	"github.com/green-api/whatsapp_chatbot_golang/examples/full"
+	"github.com/green-api/whatsapp-chatbot-golang/chatbot"
+	"github.com/green-api/whatsapp-chatbot-golang/examples/full"
 )
 
 func main() {
@@ -418,17 +455,19 @@ func main() {
 Запуск бота происходит командой - /start
 После запуска необходимо выбрать метод из меню, и бот выполнит его.
 
-Ссылка на пример: [full,go](../examples/full/main/full.go).
+Ссылка на пример: [full.go](../examples/full/main/full.go).
 
 Стартовая сцена ждет команду `/start`, после чего отправляет меню и активирует следующую сцену `PickMethodScene`.
 `PickMethodScene` ждет ответа пользователя и выполняет выбранный метод.
-Если пользователь выбрал `SendFileByUrl()`, то бот запустит сцену `InputLinkScene`, в которой попросит ссылку на файл и отправит файл, если ссылка валидна.
+Если пользователь выбрал `SendFileByUrl()`, то бот запустит сцену `InputLinkScene`, в которой попросит ссылку на файл и
+отправит файл, если ссылка валидна.
 
 ```go
 package full
 
 import (
-	"github.com/green-api/whatsapp_chatbot_golang/chatbot"
+	greenapi "github.com/green-api/whatsapp-api-client-golang-v2"
+	"github.com/green-api/whatsapp-chatbot-golang/chatbot"
 )
 
 type StartScene struct {
@@ -468,27 +507,22 @@ func (s PickMethodScene) Start(bot *chatbot.Bot) {
 		}
 
 		if message.Filter(map[string][]string{"text": {"3"}}) {
-			message.AnswerWithPoll("Please choose a color:", false, []map[string]interface{}{
-				{
-					"optionName": "Red",
-				},
-				{
-					"optionName": "Green",
-				},
-				{
-					"optionName": "Blue",
-				},
+			message.AnswerWithPoll("Please choose a color:", false, []string{
+				"Red",
+				"Green",
+				"Blue",
 			})
 		}
 
 		if message.Filter(map[string][]string{"text": {"4"}}) {
-			message.AnswerWithContact(map[string]interface{}{
-				"phoneContact": 79001234568,
-				"firstName":    "Артем",
-				"middleName":   "Петрович",
-				"lastName":     "Евпаторийский",
-				"company":      "Велосипед",
-			})
+			contact := greenapi.Contact{
+				PhoneContact: 79001234568,
+				FirstName:    "Артем",
+				MiddleName:   "Петрович",
+				LastName:     "Евпаторийский",
+				Company:      "Велосипед",
+			}
+			message.AnswerWithContact(contact)
 		}
 
 		if message.Filter(map[string][]string{"text": {"5"}}) {
@@ -506,7 +540,7 @@ type InputLinkScene struct {
 
 func (s InputLinkScene) Start(bot *chatbot.Bot) {
 	bot.IncomingMessageHandler(func(message *chatbot.Notification) {
-		if message.Filter(map[string][]string{"regex": {"^https://[^\\s]+$"}}) {
+		if message.Filter(map[string][]string{"text_regex": {"^https://[^\\s]+$"}}) {
 			text, _ := message.Text()
 			message.AnswerWithUrlFile(text, "testFile", "This is your file!")
 			message.ActivateNextScene(PickMethodScene{})
