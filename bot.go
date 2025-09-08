@@ -123,8 +123,12 @@ func (b *Bot) DeleteAllNotifications() {
 			break
 		} else {
 			var responseMapTopLevel map[string]interface{}
-			_ = json.Unmarshal(response.Body, &responseMapTopLevel)
-
+			err := json.Unmarshal(response.Body, &responseMapTopLevel)
+			if err != nil {
+				log.Println(string(response.Body))
+				continue
+			}
+			
 			receiptIdRaw := responseMapTopLevel["receiptId"]
 			receiptId := int(receiptIdRaw.(float64))
 
