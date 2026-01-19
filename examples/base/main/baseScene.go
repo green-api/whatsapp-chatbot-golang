@@ -1,7 +1,7 @@
 package main
 
 import (
-	"github.com/green-api/whatsapp-chatbot-golang"
+	whatsapp_chatbot_golang "github.com/green-api/whatsapp-chatbot-golang"
 )
 
 func main() {
