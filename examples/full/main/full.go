@@ -112,9 +112,11 @@ func (s PickMethodScene) Start(bot *whatsapp_chatbot_golang.Bot) {
 				"Заголовок меню",
 				"Нижний текст (footer)",
 			)
+			return
 		}
 		if message.Filter(map[string][]string{"text": {"Очень удобно!"}}) {
 			message.AnswerWithText("Рад, что вам понравилось! \n Подробнее о методе: https://green-api.com/docs/api/sending/SendInteractiveButtonsReply/")
+			return
 		}
 
 		if !message.Filter(map[string][]string{"text_regex": {"\\d+"}}) {

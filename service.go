@@ -136,7 +136,6 @@ func (n *Notification) AnswerWithLocation(nameLocation string, address string, l
 func (n *Notification) AnswerWithPoll(message string, multipleAnswers bool, optionsStr []string) map[string]interface{} {
 	chatId := tryParseChatId(n)
 
-	idMessage, _ := n.Body["idMessage"].(string)
 	typingTime := 1000
 	if val, ok := n.Body["typingTime"].(int); ok {
 		typingTime = val
@@ -145,7 +144,6 @@ func (n *Notification) AnswerWithPoll(message string, multipleAnswers bool, opti
 	options := []greenapi.SendPollOption{
 		greenapi.OptionalMultipleAnswers(multipleAnswers),
 		greenapi.OptionalPollTypingTime(typingTime),
-		greenapi.OptionalPollQuotedMessageId(idMessage),
 	}
 
 	resp, err := n.Sending().SendPoll(chatId, message, optionsStr, options...)
