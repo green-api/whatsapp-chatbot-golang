@@ -30,11 +30,13 @@ func (n *Notification) AnswerWithText(text string, linkPreview ...string) map[st
 	resp, err := n.Sending().SendMessage(chatId, text, options...)
 
 	if err != nil {
-		*n.ErrorChannel <- err
-		return map[string]interface{}{"error": err}
+		n.reportError(err)
+		return map[string]interface{}{"error": err.Error()}
 	}
 	var result map[string]interface{}
-	_ = json.Unmarshal(resp.Body, &result)
+	if err := json.Unmarshal(resp.Body, &result); err != nil {
+		return map[string]interface{}{"error": "failed to parse json"}
+	}
 	return result
 }
 
@@ -60,11 +62,13 @@ func (n *Notification) AnswerWithUploadFile(filePath string, caption string) map
 	resp, err := n.Sending().SendFileByUpload(chatId, filePath, fileName, options...)
 
 	if err != nil {
-		*n.ErrorChannel <- err
-		return map[string]interface{}{"error": err}
+		n.reportError(err)
+		return map[string]interface{}{"error": err.Error()}
 	}
 	var result map[string]interface{}
-	_ = json.Unmarshal(resp.Body, &result)
+	if err := json.Unmarshal(resp.Body, &result); err != nil {
+		return map[string]interface{}{"error": "failed to parse json"}
+	}
 	return result
 }
 
@@ -88,11 +92,13 @@ func (n *Notification) AnswerWithUrlFile(urlFile string, filename string, captio
 	resp, err := n.Sending().SendFileByUrl(chatId, urlFile, filename, options...)
 
 	if err != nil {
-		*n.ErrorChannel <- err
-		return map[string]interface{}{"error": err}
+		n.reportError(err)
+		return map[string]interface{}{"error": err.Error()}
 	}
 	var result map[string]interface{}
-	_ = json.Unmarshal(resp.Body, &result)
+	if err := json.Unmarshal(resp.Body, &result); err != nil {
+		return map[string]interface{}{"error": "failed to parse json"}
+	}
 	return result
 }
 
@@ -117,18 +123,20 @@ func (n *Notification) AnswerWithLocation(nameLocation string, address string, l
 	resp, err := n.Sending().SendLocation(chatId, float32(latitude), float32(longitude), options...)
 
 	if err != nil {
-		*n.ErrorChannel <- err
-		return map[string]interface{}{"error": err}
+		n.reportError(err)
+		return map[string]interface{}{"error": err.Error()}
 	}
 	var result map[string]interface{}
-	_ = json.Unmarshal(resp.Body, &result)
+	if err := json.Unmarshal(resp.Body, &result); err != nil {
+		return map[string]interface{}{"error": "failed to parse json"}
+	}
 	return result
 }
 
 func (n *Notification) AnswerWithPoll(message string, multipleAnswers bool, optionsStr []string) map[string]interface{} {
 	chatId := tryParseChatId(n)
 
-	// idMessage, _ := n.Body["idMessage"].(string)
+	idMessage, _ := n.Body["idMessage"].(string)
 	typingTime := 1000
 	if val, ok := n.Body["typingTime"].(int); ok {
 		typingTime = val
@@ -137,16 +145,19 @@ func (n *Notification) AnswerWithPoll(message string, multipleAnswers bool, opti
 	options := []greenapi.SendPollOption{
 		greenapi.OptionalMultipleAnswers(multipleAnswers),
 		greenapi.OptionalPollTypingTime(typingTime),
+		greenapi.OptionalPollQuotedMessageId(idMessage),
 	}
 
 	resp, err := n.Sending().SendPoll(chatId, message, optionsStr, options...)
 
 	if err != nil {
-		*n.ErrorChannel <- err
-		return map[string]interface{}{"error": err}
+		n.reportError(err)
+		return map[string]interface{}{"error": err.Error()}
 	}
 	var result map[string]interface{}
-	_ = json.Unmarshal(resp.Body, &result)
+	if err := json.Unmarshal(resp.Body, &result); err != nil {
+		return map[string]interface{}{"error": "failed to parse json"}
+	}
 	return result
 }
 
@@ -170,11 +181,13 @@ func (n *Notification) AnswerWithContact(contactData greenapi.Contact) map[strin
 	resp, err := n.Sending().SendContact(chatId, contactData, options...)
 
 	if err != nil {
-		*n.ErrorChannel <- err
-		return map[string]interface{}{"error": err}
+		n.reportError(err)
+		return map[string]interface{}{"error": err.Error()}
 	}
 	var result map[string]interface{}
-	_ = json.Unmarshal(resp.Body, &result)
+	if err := json.Unmarshal(resp.Body, &result); err != nil {
+		return map[string]interface{}{"error": "failed to parse json"}
+	}
 	return result
 }
 
@@ -183,11 +196,13 @@ func (n *Notification) SendButtons(chatId string, body string, buttons []greenap
 	resp, err := n.Sending().SendInteractiveButtonsReply(chatId, body, buttons)
 
 	if err != nil {
-		*n.ErrorChannel <- err
-		return map[string]interface{}{"error": err}
+		n.reportError(err)
+		return map[string]interface{}{"error": err.Error()}
 	}
 	var result map[string]interface{}
-	_ = json.Unmarshal(resp.Body, &result)
+	if err := json.Unmarshal(resp.Body, &result); err != nil {
+		return map[string]interface{}{"error": "failed to parse json"}
+	}
 	return result
 }
 
@@ -209,11 +224,13 @@ func (n *Notification) SendText(text string, linkPreview ...string) map[string]i
 	resp, err := n.Sending().SendMessage(chatId, text, options...)
 
 	if err != nil {
-		*n.ErrorChannel <- err
-		return map[string]interface{}{"error": err}
+		n.reportError(err)
+		return map[string]interface{}{"error": err.Error()}
 	}
 	var result map[string]interface{}
-	_ = json.Unmarshal(resp.Body, &result)
+	if err := json.Unmarshal(resp.Body, &result); err != nil {
+		return map[string]interface{}{"error": "failed to parse json"}
+	}
 	return result
 }
 
@@ -236,11 +253,13 @@ func (n *Notification) SendUploadFile(filePath string, caption string) map[strin
 	resp, err := n.Sending().SendFileByUpload(chatId, filePath, fileName, options...)
 
 	if err != nil {
-		*n.ErrorChannel <- err
-		return map[string]interface{}{"error": err}
+		n.reportError(err)
+		return map[string]interface{}{"error": err.Error()}
 	}
 	var result map[string]interface{}
-	_ = json.Unmarshal(resp.Body, &result)
+	if err := json.Unmarshal(resp.Body, &result); err != nil {
+		return map[string]interface{}{"error": "failed to parse json"}
+	}
 	return result
 }
 
@@ -264,11 +283,13 @@ func (n *Notification) SendUrlFile(urlFile string, filename string, caption stri
 	resp, err := n.Sending().SendFileByUrl(chatId, urlFile, filename, options...)
 
 	if err != nil {
-		*n.ErrorChannel <- err
-		return map[string]interface{}{"error": err}
+		n.reportError(err)
+		return map[string]interface{}{"error": err.Error()}
 	}
 	var result map[string]interface{}
-	_ = json.Unmarshal(resp.Body, &result)
+	if err := json.Unmarshal(resp.Body, &result); err != nil {
+		return map[string]interface{}{"error": "failed to parse json"}
+	}
 	return result
 }
 
@@ -292,11 +313,13 @@ func (n *Notification) SendLocation(nameLocation string, address string, latitud
 	resp, err := n.Sending().SendLocation(chatId, float32(latitude), float32(longitude), options...)
 
 	if err != nil {
-		*n.ErrorChannel <- err
-		return map[string]interface{}{"error": err}
+		n.reportError(err)
+		return map[string]interface{}{"error": err.Error()}
 	}
 	var result map[string]interface{}
-	_ = json.Unmarshal(resp.Body, &result)
+	if err := json.Unmarshal(resp.Body, &result); err != nil {
+		return map[string]interface{}{"error": "failed to parse json"}
+	}
 	return result
 }
 
@@ -314,11 +337,13 @@ func (n *Notification) SendPoll(message string, multipleAnswers bool, optionsStr
 	resp, err := n.Sending().SendPoll(chatId, message, optionsStr, options...)
 
 	if err != nil {
-		*n.ErrorChannel <- err
-		return map[string]interface{}{"error": err}
+		n.reportError(err)
+		return map[string]interface{}{"error": err.Error()}
 	}
 	var result map[string]interface{}
-	_ = json.Unmarshal(resp.Body, &result)
+	if err := json.Unmarshal(resp.Body, &result); err != nil {
+		return map[string]interface{}{"error": "failed to parse json"}
+	}
 	return result
 }
 
@@ -335,11 +360,13 @@ func (n *Notification) SendContact(contactData greenapi.Contact) map[string]inte
 	resp, err := n.Sending().SendContact(chatId, contactData, options...)
 
 	if err != nil {
-		*n.ErrorChannel <- err
-		return map[string]interface{}{"error": err}
+		n.reportError(err)
+		return map[string]interface{}{"error": err.Error()}
 	}
 	var result map[string]interface{}
-	_ = json.Unmarshal(resp.Body, &result)
+	if err := json.Unmarshal(resp.Body, &result); err != nil {
+		return map[string]interface{}{"error": "failed to parse json"}
+	}
 	return result
 }
 
@@ -354,24 +381,14 @@ func (n *Notification) AnswerWithButtons(body string, buttons []greenapi.Interac
 	resp, err := n.Sending().SendInteractiveButtonsReply(chatId, body, buttons, options...)
 
 	if err != nil {
-		*n.ErrorChannel <- err
-		return map[string]interface{}{"error": err}
+		n.reportError(err)
+		return map[string]interface{}{"error": err.Error()}
 	}
 	var result map[string]interface{}
-	_ = json.Unmarshal(resp.Body, &result)
-	return result
-}
-
-func tryParseChatId(n *Notification) string {
-	var chatId string
-
-	if n.Body["senderData"] != nil {
-		chatId = n.Body["senderData"].(map[string]interface{})["chatId"].(string)
-	} else {
-		chatId = n.Body["from"].(string)
+	if err := json.Unmarshal(resp.Body, &result); err != nil {
+		return map[string]interface{}{"error": "failed to parse json"}
 	}
-
-	return chatId
+	return result
 }
 
 func (n *Notification) AnswerWithInteractiveButtons(body string, buttons []greenapi.InteractiveButton, header string, footer string) map[string]interface{} {
@@ -392,11 +409,13 @@ func (n *Notification) AnswerWithInteractiveButtons(body string, buttons []green
 	resp, err := n.Sending().SendInteractiveButtons(chatId, body, buttons, options...)
 
 	if err != nil {
-		*n.ErrorChannel <- err
-		return map[string]interface{}{"error": err}
+		n.reportError(err)
+		return map[string]interface{}{"error": err.Error()}
 	}
 	var result map[string]interface{}
-	_ = json.Unmarshal(resp.Body, &result)
+	if err := json.Unmarshal(resp.Body, &result); err != nil {
+		return map[string]interface{}{"error": "failed to parse json"}
+	}
 	return result
 }
 
@@ -407,5 +426,34 @@ func getTypingType(fileName string) string {
 		return "recording"
 	default:
 		return ""
+	}
+}
+
+func tryParseChatId(n *Notification) string {
+	if n == nil || n.Body == nil {
+		return ""
+	}
+
+	if data, ok := n.Body["senderData"].(map[string]interface{}); ok {
+		if id, ok := data["chatId"].(string); ok {
+			return id
+		}
+	}
+
+	if from, ok := n.Body["from"].(string); ok {
+		return from
+	}
+
+	return ""
+}
+
+func (n *Notification) reportError(err error) {
+	if n == nil || n.ErrorChannel == nil || *n.ErrorChannel == nil {
+		return
+	}
+
+	select {
+	case *n.ErrorChannel <- err:
+	default:
 	}
 }
