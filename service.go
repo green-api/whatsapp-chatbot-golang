@@ -3,6 +3,7 @@ package whatsapp_chatbot_golang
 import (
 	"encoding/json"
 	"path/filepath"
+	"strings"
 
 	greenapi "github.com/green-api/whatsapp-api-client-golang-v2"
 )
@@ -46,10 +47,12 @@ func (n *Notification) AnswerWithUploadFile(filePath string, caption string) map
 	if val, ok := n.Body["typingTime"].(int); ok {
 		typingTime = val
 	}
+	typingType := getTypingType(fileName)
 
 	options := []greenapi.SendFileByUploadOption{
 		greenapi.OptionalQuotedMessageIdSendUpload(idMessage),
 		greenapi.OptionalUploadTypingTime(typingTime),
+		greenapi.OptionalUploadTypingType(typingType),
 	}
 	if caption != "" {
 		options = append(options, greenapi.OptionalCaptionSendUpload(caption))
@@ -72,10 +75,12 @@ func (n *Notification) AnswerWithUrlFile(urlFile string, filename string, captio
 	if val, ok := n.Body["typingTime"].(int); ok {
 		typingTime = val
 	}
+	typingType := getTypingType(filename)
 
 	options := []greenapi.SendFileByUrlOption{
 		greenapi.OptionalQuotedMessageIdSendUrl(idMessage),
 		greenapi.OptionalUrlTypingTime(typingTime),
+		greenapi.OptionalUrlTypingType(typingType),
 	}
 	if caption != "" {
 		options = append(options, greenapi.OptionalCaptionSendUrl(caption))
@@ -219,9 +224,11 @@ func (n *Notification) SendUploadFile(filePath string, caption string) map[strin
 	if val, ok := n.Body["typingTime"].(int); ok {
 		typingTime = val
 	}
+	typingType := getTypingType(fileName)
 
 	options := []greenapi.SendFileByUploadOption{
 		greenapi.OptionalUploadTypingTime(typingTime),
+		greenapi.OptionalUploadTypingType(typingType),
 	}
 	if caption != "" {
 		options = append(options, greenapi.OptionalCaptionSendUpload(caption))
@@ -243,14 +250,17 @@ func (n *Notification) SendUrlFile(urlFile string, filename string, caption stri
 	if val, ok := n.Body["typingTime"].(int); ok {
 		typingTime = val
 	}
+	typingType := getTypingType(filename)
 
-	var options []greenapi.SendFileByUrlOption
-	if typingTime != 0 {
-		options = append(options, greenapi.OptionalUrlTypingTime(typingTime))
+	options := []greenapi.SendFileByUrlOption{
+		greenapi.OptionalUrlTypingTime(typingTime),
+		greenapi.OptionalUrlTypingType(typingType),
 	}
+
 	if caption != "" {
 		options = append(options, greenapi.OptionalCaptionSendUrl(caption))
 	}
+
 	resp, err := n.Sending().SendFileByUrl(chatId, urlFile, filename, options...)
 
 	if err != nil {
@@ -388,4 +398,14 @@ func (n *Notification) AnswerWithInteractiveButtons(body string, buttons []green
 	var result map[string]interface{}
 	_ = json.Unmarshal(resp.Body, &result)
 	return result
+}
+
+func getTypingType(fileName string) string {
+	ext := strings.ToLower(filepath.Ext(fileName))
+	switch ext {
+	case ".mp3", ".ogg", ".oga", ".m4a", ".aac", ".opus":
+		return "recording"
+	default:
+		return ""
+	}
 }

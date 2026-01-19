@@ -2,6 +2,8 @@ package whatsapp_chatbot_golang
 
 import (
 	"errors"
+	"fmt"
+	"log"
 
 	greenapi "github.com/green-api/whatsapp-api-client-golang-v2"
 )
@@ -21,35 +23,60 @@ func NewNotification(body map[string]interface{}, stateManager StateManager, gre
 }
 
 func (n *Notification) Text() (string, error) {
-	if n.isIncomingMessage() || n.isOutgoingMessage() {
-		msgData, ok := n.Body["messageData"].(map[string]interface{})
-		if !ok {
-			return "", errors.New("messageData not found")
+	if !n.isIncomingMessage() && !n.isOutgoingMessage() {
+		return "", errors.New("not a message webhook")
+	}
+
+	msgData, ok := n.Body["messageData"].(map[string]interface{})
+	if !ok {
+		return "", errors.New("messageData not found")
+	}
+
+	typeInterface, ok := msgData["typeMessage"]
+	if !ok {
+		return "", errors.New("typeMessage not found")
+	}
+	typeMessage := typeInterface.(string)
+
+	switch typeMessage {
+	case "textMessage":
+		if data, ok := msgData["textMessageData"].(map[string]interface{}); ok {
+			return data["textMessage"].(string), nil
 		}
 
-		typeMessage := msgData["typeMessage"].(string)
+	case "extendedTextMessage":
+		if data, ok := msgData["extendedTextMessageData"].(map[string]interface{}); ok {
+			if val, ok := data["text"].(string); ok && val != "" {
+				return val, nil
+			}
+			if desc, ok := data["description"].(string); ok {
+				return desc, nil
+			}
+		}
 
-		switch typeMessage {
-		case "textMessage":
-			return msgData["textMessageData"].(map[string]interface{})["textMessage"].(string), nil
+	case "buttonsResponseMessage":
+		if data, ok := msgData["buttonsResponseMessage"].(map[string]interface{}); ok {
+			return data["selectedButtonText"].(string), nil
+		}
 
-		case "extendedTextMessage":
-			return msgData["extendedTextMessageData"].(map[string]interface{})["text"].(string), nil
+	case "interactiveButtonsResponse":
+		if data, ok := msgData["interactiveButtonsResponse"].(map[string]interface{}); ok {
+			return data["selectedDisplayText"].(string), nil
+		}
 
-		case "buttonsResponseMessage":
-			return msgData["buttonsResponseMessage"].(map[string]interface{})["selectedButtonText"].(string), nil
+	case "templateButtonReplyMessage":
+		if data, ok := msgData["templateButtonReplyMessage"].(map[string]interface{}); ok {
+			return data["selectedDisplayText"].(string), nil
+		}
 
-		case "interactiveButtonsResponse":
-			return msgData["interactiveButtonsResponse"].(map[string]interface{})["selectedDisplayText"].(string), nil
-
-		case "templateButtonReplyMessage":
-			return msgData["templateButtonReplyMessage"].(map[string]interface{})["selectedDisplayText"].(string), nil
-
-		case "listResponseMessage":
-			return msgData["listResponseMessage"].(map[string]interface{})["title"].(string), nil
+	case "listResponseMessage":
+		if data, ok := msgData["listResponseMessage"].(map[string]interface{}); ok {
+			return data["title"].(string), nil
 		}
 	}
-	return "", errors.New("text not exist, typeMessage isn't textMessage or extendedTextMessage")
+
+	log.Printf("Unknown or empty message type: %s. Body: %+v", typeMessage, msgData)
+	return "", fmt.Errorf("text does not exist for typeMessage: %s", typeMessage)
 }
 
 func (n *Notification) Sender() (string, error) {

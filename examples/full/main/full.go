@@ -1,7 +1,11 @@
 package main
 
 import (
+	"log"
 	"net/http"
+	"path/filepath"
+	"strings"
+	"time"
 
 	greenapi "github.com/green-api/whatsapp-api-client-golang-v2"
 	whatsapp_chatbot_golang "github.com/green-api/whatsapp-chatbot-golang"
@@ -111,10 +115,17 @@ type InputLinkScene struct {
 
 func (s InputLinkScene) Start(bot *whatsapp_chatbot_golang.Bot) {
 	bot.IncomingMessageHandler(func(message *whatsapp_chatbot_golang.Notification) {
-		if message.Filter(map[string][]string{"regex": {"^https://[^\\s]+$"}}) {
-			text, _ := message.Text()
+		if message.Filter(map[string][]string{"regex": {"https://[a-zA-Z0-9\\./\\-]+"}}) {
+			rawText, _ := message.Text()
+			text := strings.TrimSpace(rawText)
 
-			resp, err := http.Get(text)
+			client := &http.Client{
+				Timeout: 15 * time.Second,
+			}
+			req, _ := http.NewRequest("GET", text, nil)
+			req.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) ChatBot/1.0")
+
+			resp, err := client.Do(req)
 			if err != nil {
 				message.AnswerWithText("URL недоступен, пожалуйста, попробуйте другую ссылку.")
 				return
@@ -122,7 +133,11 @@ func (s InputLinkScene) Start(bot *whatsapp_chatbot_golang.Bot) {
 			defer resp.Body.Close()
 
 			if resp.StatusCode == http.StatusOK {
-				message.AnswerWithUrlFile(text, "testFile", "This is your file!")
+				fileNameFromUrl := filepath.Base(text)
+
+				result := message.AnswerWithUrlFile(text, fileNameFromUrl, "This is your file!")
+
+				log.Printf("Green API Response: %+v", result)
 				message.ActivateNextScene(PickMethodScene{})
 			} else {
 				message.AnswerWithText("URL недоступен, пожалуйста, попробуйте другую ссылку.")

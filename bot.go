@@ -3,10 +3,11 @@ package whatsapp_chatbot_golang
 import (
 	"encoding/json"
 	"fmt"
-	greenapi "github.com/green-api/whatsapp-api-client-golang-v2"
 	"log"
 	"strings"
 	"time"
+
+	greenapi "github.com/green-api/whatsapp-api-client-golang-v2"
 )
 
 type Bot struct {
@@ -23,8 +24,8 @@ func NewBot(IDInstance string, APITokenInstance string) *Bot {
 		GreenAPI: greenapi.GreenAPI{
 			APIURL:           "https://api.green-api.com",
 			MediaURL:         "https://media.green-api.com",
-			IDInstance:       IDInstance,
-			APITokenInstance: APITokenInstance,
+			IDInstance:       "7103112854",
+			APITokenInstance: "922f5ee76eca4365ad2637671314c23d5b9cc916bcf34c2b82",
 		},
 		CleanNotificationQueue: true,
 		StateManager:           NewMapStateManager(map[string]interface{}{}),
@@ -128,7 +129,7 @@ func (b *Bot) DeleteAllNotifications() {
 				log.Println(string(response.Body))
 				continue
 			}
-			
+
 			receiptIdRaw := responseMapTopLevel["receiptId"]
 			receiptId := int(receiptIdRaw.(float64))
 
