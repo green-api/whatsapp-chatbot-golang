@@ -24,8 +24,8 @@ func NewBot(IDInstance string, APITokenInstance string) *Bot {
 		GreenAPI: greenapi.GreenAPI{
 			APIURL:           "https://api.green-api.com",
 			MediaURL:         "https://media.green-api.com",
-			IDInstance:       "7103112854",
-			APITokenInstance: "922f5ee76eca4365ad2637671314c23d5b9cc916bcf34c2b82",
+			IDInstance:       IDInstance,
+			APITokenInstance: APITokenInstance,
 		},
 		CleanNotificationQueue: true,
 		StateManager:           NewMapStateManager(map[string]interface{}{}),
