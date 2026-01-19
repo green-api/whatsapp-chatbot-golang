@@ -2,6 +2,7 @@ package whatsapp_chatbot_golang
 
 import (
 	"errors"
+
 	greenapi "github.com/green-api/whatsapp-api-client-golang-v2"
 )
 
@@ -21,12 +22,31 @@ func NewNotification(body map[string]interface{}, stateManager StateManager, gre
 
 func (n *Notification) Text() (string, error) {
 	if n.isIncomingMessage() || n.isOutgoingMessage() {
-		typeMessage := n.Body["messageData"].(map[string]interface{})["typeMessage"].(string)
+		msgData, ok := n.Body["messageData"].(map[string]interface{})
+		if !ok {
+			return "", errors.New("messageData not found")
+		}
 
-		if typeMessage == "textMessage" {
-			return n.Body["messageData"].(map[string]interface{})["textMessageData"].(map[string]interface{})["textMessage"].(string), nil
-		} else if typeMessage == "extendedTextMessage" {
-			return n.Body["messageData"].(map[string]interface{})["extendedTextMessageData"].(map[string]interface{})["text"].(string), nil
+		typeMessage := msgData["typeMessage"].(string)
+
+		switch typeMessage {
+		case "textMessage":
+			return msgData["textMessageData"].(map[string]interface{})["textMessage"].(string), nil
+
+		case "extendedTextMessage":
+			return msgData["extendedTextMessageData"].(map[string]interface{})["text"].(string), nil
+
+		case "buttonsResponseMessage":
+			return msgData["buttonsResponseMessage"].(map[string]interface{})["selectedButtonText"].(string), nil
+
+		case "interactiveButtonsResponse":
+			return msgData["interactiveButtonsResponse"].(map[string]interface{})["selectedDisplayText"].(string), nil
+
+		case "templateButtonReplyMessage":
+			return msgData["templateButtonReplyMessage"].(map[string]interface{})["selectedDisplayText"].(string), nil
+
+		case "listResponseMessage":
+			return msgData["listResponseMessage"].(map[string]interface{})["title"].(string), nil
 		}
 	}
 	return "", errors.New("text not exist, typeMessage isn't textMessage or extendedTextMessage")
