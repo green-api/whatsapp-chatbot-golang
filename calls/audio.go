@@ -7,7 +7,6 @@ import (
 	"math"
 	"sync"
 	"time"
-	// TODO: Remove this local import override in go.mod after the VoIP SDK release.
 	"github.com/green-api/whatsapp-api-client-golang-v2/opus"
 	sdk "github.com/green-api/whatsapp-api-client-golang-v2/voip"
 )
@@ -246,14 +245,20 @@ type BotTrack struct {
 	epoch     time.Time
 	position  int64
 	resampler pcmRateConverter
+	tone      outputTone
 	ctx       context.Context
 	cancel    context.CancelFunc
 }
 
-func NewBotTrack(source AudioSource, tap *RecordingTap, emit EventSink) *BotTrack {
+func NewBotTrack(source AudioSource, tap *RecordingTap, emit EventSink, softening ...float64) *BotTrack {
 	ctx, cancel := context.WithCancel(context.Background())
+	track := &BotTrack{source: source, tap: tap, emit: emit, epoch: time.Now(), ctx: ctx, cancel: cancel}
 
-	return &BotTrack{source: source, tap: tap, emit: emit, epoch: time.Now(), ctx: ctx, cancel: cancel}
+	if len(softening) > 0 {
+		track.tone.mix = softening[0]
+	}
+
+	return track
 }
 
 func (t *BotTrack) Recv(ctx context.Context) (sdk.AudioFrame, error) {
@@ -287,6 +292,7 @@ func (t *BotTrack) Recv(ctx context.Context) (sdk.AudioFrame, error) {
 		t.position = max(t.position, int64(math.Round(at.Sub(t.epoch).Seconds()*PCMRate)))
 	}
 
+	data = t.tone.process(data)
 	t.tap.Write(TrackBot, data, nil, at, resumed)
 	samples := t.resampler.upsample(data)
 
@@ -439,19 +445,26 @@ func (s *CallerSink) Close() error {
 }
 
 type AudioBridge struct {
-	mu      sync.Mutex
-	source  AudioSource
-	sink    AudioSink
-	tap     *RecordingTap
-	emit    EventSink
-	options InputAudioOptions
-	track   *BotTrack
-	caller  *CallerSink
-	closed  bool
+	mu              sync.Mutex
+	source          AudioSource
+	sink            AudioSink
+	tap             *RecordingTap
+	emit            EventSink
+	options         InputAudioOptions
+	outputSoftening float64
+	track           *BotTrack
+	caller          *CallerSink
+	closed          bool
 }
 
-func NewAudioBridge(source AudioSource, sink AudioSink, r *CallRecorder, emit EventSink, o InputAudioOptions) *AudioBridge {
-	return &AudioBridge{source: source, sink: sink, tap: NewRecordingTap(r), emit: emit, options: o}
+func NewAudioBridge(source AudioSource, sink AudioSink, r *CallRecorder, emit EventSink, o InputAudioOptions, softening ...float64) *AudioBridge {
+	bridge := &AudioBridge{source: source, sink: sink, tap: NewRecordingTap(r), emit: emit, options: o}
+
+	if len(softening) > 0 {
+		bridge.outputSoftening = softening[0]
+	}
+
+	return bridge
 }
 
 func (b *AudioBridge) ActivateRecording() { b.tap.Activate() }
@@ -471,7 +484,7 @@ func (b *AudioBridge) Create(ctx context.Context) (*sdk.CallAudio, error) {
 		b.tap.ReplaceTracks()
 	}
 
-	b.track = NewBotTrack(b.source, b.tap, b.emit)
+	b.track = NewBotTrack(b.source, b.tap, b.emit, b.outputSoftening)
 	b.caller = NewCallerSink(b.sink, b.tap, b.emit, b.options)
 	track, caller := b.track, b.caller
 

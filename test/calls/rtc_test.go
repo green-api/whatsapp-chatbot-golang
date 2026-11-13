@@ -51,14 +51,14 @@ func TestRealRTCBridgeExchangesDecodedBotAndCallerAudio(t *testing.T) {
 
 	ctx, cancel := context.WithTimeout(context.Background(), 12*time.Second)
 	defer cancel()
-	left, err := sdk.NewAiortcBridge(nil)
+	left, err := sdk.NewRTCAdapter(nil)
 
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	defer left.Close()
-	right, err := sdk.NewAiortcBridge(nil)
+	right, err := sdk.NewRTCAdapter(nil)
 
 	if err != nil {
 		t.Fatal(err)

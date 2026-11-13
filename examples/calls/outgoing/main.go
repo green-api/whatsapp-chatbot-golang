@@ -6,6 +6,7 @@ import (
 	"github.com/green-api/whatsapp-chatbot-golang/calls"
 	"log"
 	"os"
+	"os/exec"
 	"os/signal"
 )
 
@@ -24,7 +25,14 @@ func main() {
 		log.Fatal("set CALL_TARGET")
 	}
 
-	service, err := calls.NewWhatsAppCallService(config)
+	options := calls.DefaultCallOptions()
+
+	if _, err := exec.LookPath(options.Recording.EncoderPath); err != nil {
+		log.Printf("MP3 recording disabled: %s is unavailable; install FFmpeg or set options.Recording.EncoderPath", options.Recording.EncoderPath)
+		options.Recording.Enabled = false
+	}
+
+	service, err := calls.NewWhatsAppCallService(config, options)
 
 	if err != nil {
 		log.Fatal(err)

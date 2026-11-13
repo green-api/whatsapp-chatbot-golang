@@ -310,15 +310,17 @@ func (a AudioLoss) DroppedSeconds() float64 { return float64(a.DroppedSamples) /
 
 type CallOptions struct {
 	RingSeconds, TalkSeconds, SetupSeconds, CommandSeconds, ShutdownSeconds float64
-	Recording                                                               RecordingOptions
-	Playback                                                                PlaybackOptions
-	InputAudio                                                              InputAudioOptions
-	Vad                                                                     VadOptions
-	OnAudioLoss                                                             func(*CallSession, AudioLoss)
+	// OutputSoftening blends a gentle low-pass into the bot voice (0 disables it).
+	OutputSoftening float64
+	Recording       RecordingOptions
+	Playback        PlaybackOptions
+	InputAudio      InputAudioOptions
+	Vad             VadOptions
+	OnAudioLoss     func(*CallSession, AudioLoss)
 }
 
 func DefaultCallOptions() CallOptions {
-	return CallOptions{RingSeconds: 30, TalkSeconds: 240, SetupSeconds: 30, CommandSeconds: 10, ShutdownSeconds: 10, Recording: DefaultRecordingOptions(), Playback: DefaultPlaybackOptions(), InputAudio: DefaultInputAudioOptions(), Vad: DefaultVadOptions()}
+	return CallOptions{RingSeconds: 30, TalkSeconds: 240, SetupSeconds: 30, CommandSeconds: 10, ShutdownSeconds: 10, OutputSoftening: .2, Recording: DefaultRecordingOptions(), Playback: DefaultPlaybackOptions(), InputAudio: DefaultInputAudioOptions(), Vad: DefaultVadOptions()}
 }
 
 func positiveValues(v ...float64) error {
@@ -332,6 +334,10 @@ func positiveValues(v ...float64) error {
 }
 
 func (o CallOptions) Validate() error {
+	if math.IsNaN(o.OutputSoftening) || math.IsInf(o.OutputSoftening, 0) || o.OutputSoftening < 0 || o.OutputSoftening > 1 {
+		return validationError("output softening must be between 0 and 1")
+	}
+
 	if err := positiveValues(o.RingSeconds, o.TalkSeconds, o.SetupSeconds, o.CommandSeconds, o.ShutdownSeconds, o.Playback.SoftLimitSeconds, o.Playback.HardLimitSeconds, o.Playback.StallSeconds, o.Playback.WatchdogSeconds, o.InputAudio.BufferSeconds, o.InputAudio.SendSeconds, o.InputAudio.EnqueueSeconds, float64(o.Recording.BitrateBPS), float64(o.Recording.MaxPendingChunks), o.Recording.WriterPollSeconds, float64(o.Recording.ExportBlockSamples)); err != nil {
 		return err
 	}

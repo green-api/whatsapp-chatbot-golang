@@ -292,7 +292,7 @@ type CallResources struct {
 func newCallResources(c ProviderConfig, o CallOptions, s *CallSession, emit EventSink, deps Dependencies) *CallResources {
 	r := &CallResources{options: o, session: s, Operations: NewOperations(emit), Recorder: NewCallRecorder(o.Recording)}
 	r.Voice = deps.NewVoice(c, o.Playback, emit, s.Language, o.ShutdownSeconds, o.Vad)
-	r.Audio = NewAudioBridge(r.Voice, r.Voice, r.Recorder, emit, o.InputAudio)
+	r.Audio = NewAudioBridge(r.Voice, r.Voice, r.Recorder, emit, o.InputAudio, o.OutputSoftening)
 	r.API = deps.NewAPI(c, s, emit)
 
 	return r

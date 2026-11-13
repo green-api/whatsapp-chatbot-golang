@@ -6,7 +6,6 @@ import (
 	"net/http"
 	"strings"
 	"sync"
-	// TODO: Remove this local import override in go.mod when the VoIP SDK is released.
 	sdk "github.com/green-api/whatsapp-api-client-golang-v2/voip"
 )
 

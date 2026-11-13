@@ -6,7 +6,7 @@ toolchain go1.24.2
 
 require (
 	github.com/coder/websocket v1.8.14
-	github.com/green-api/whatsapp-api-client-golang-v2 v1.0.8-0.20261111083457-189ccf4e539d
+	github.com/green-api/whatsapp-api-client-golang-v2 v1.1.0
 )
 
 require (
@@ -38,6 +38,3 @@ require (
 	golang.org/x/sys v0.39.0 // indirect
 	layeh.com/gopus v0.0.0-20210501142526-1ee02d434e32 // indirect
 )
-
-// TODO: Remove this local import override after the VoIP SDK is released.
-replace github.com/green-api/whatsapp-api-client-golang-v2 => ./external/whatsapp-api-client-golang-v2
