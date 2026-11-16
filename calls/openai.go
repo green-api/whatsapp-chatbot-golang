@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/coder/websocket"
+	"github.com/google/uuid"
 	"net/http"
 	"net/url"
 	"sync"
@@ -56,7 +57,7 @@ func (v *RealtimeConversation) SessionSettings() map[string]any {
 	return s
 }
 
-func (v *RealtimeConversation) Start(ctx context.Context) error {
+func (v *RealtimeConversation) openConnection(ctx context.Context) (*websocket.Conn, error) {
 	endpoint := v.config.RealtimeURL
 
 	if endpoint == "" {
@@ -66,7 +67,7 @@ func (v *RealtimeConversation) Start(ctx context.Context) error {
 	u, err := url.Parse(endpoint)
 
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	q := u.Query()
@@ -75,7 +76,17 @@ func (v *RealtimeConversation) Start(ctx context.Context) error {
 	conn, _, err := websocket.Dial(ctx, u.String(), &websocket.DialOptions{HTTPHeader: http.Header{"Authorization": []string{"Bearer " + v.config.OpenAIAPIKey}}})
 
 	if err != nil {
-		return &ProviderError{"openai", "connect_failed", "Realtime connection failed"}
+		return nil, wrapProviderError("openai", "connect_failed", err)
+	}
+
+	return conn, nil
+}
+
+func (v *RealtimeConversation) Start(ctx context.Context) error {
+	conn, err := v.openConnection(ctx)
+
+	if err != nil {
+		return err
 	}
 
 	conn.SetReadLimit(16 << 20)
@@ -243,43 +254,20 @@ func (v *RealtimeConversation) defaultGreetingInstruction() string {
 }
 
 type realtimeEvent struct {
-	Type, ResponseID, ItemID, Delta string
-	ContentIndex                    int `json:"content_index"`
-	Response                        struct{ ID, Status string }
-	Error                           struct {
-		Code, Message string
-		EventID       string `json:"event_id"`
-	}
-}
-
-func (e *realtimeEvent) UnmarshalJSON(b []byte) error {
-	type plain realtimeEvent
-	var raw struct {
-		Type         string                      `json:"type"`
-		ResponseID   string                      `json:"response_id"`
-		ItemID       string                      `json:"item_id"`
-		Delta        string                      `json:"delta"`
-		ContentIndex int                         `json:"content_index"`
-		Response     struct{ ID, Status string } `json:"response"`
-		Error        struct {
-			Code, Message string
-			EventID       string `json:"event_id"`
-		} `json:"error"`
-	}
-
-	if err := json.Unmarshal(b, &raw); err != nil {
-		return err
-	}
-
-	e.Type = raw.Type
-	e.ResponseID = raw.ResponseID
-	e.ItemID = raw.ItemID
-	e.Delta = raw.Delta
-	e.ContentIndex = raw.ContentIndex
-	e.Response = raw.Response
-	e.Error = raw.Error
-
-	return nil
+	Type         string `json:"type"`
+	ResponseID   string `json:"response_id"`
+	ItemID       string `json:"item_id"`
+	Delta        string `json:"delta"`
+	ContentIndex int    `json:"content_index"`
+	Response     struct {
+		ID     string `json:"id"`
+		Status string `json:"status"`
+	} `json:"response"`
+	Error struct {
+		Code    string `json:"code"`
+		Message string `json:"message"`
+		EventID string `json:"event_id"`
+	} `json:"error"`
 }
 
 func providerError(e realtimeEvent) error {
@@ -289,7 +277,7 @@ func providerError(e realtimeEvent) error {
 		code = "realtime_error"
 	}
 
-	return &ProviderError{"openai", code, e.Error.Message}
+	return &ProviderError{Provider: "openai", Code: code, Detail: e.Error.Message}
 }
 
 func (v *RealtimeConversation) dispatch(ctx context.Context, e realtimeEvent) error {
@@ -414,7 +402,7 @@ func (v *RealtimeConversation) responseFinished(ctx context.Context, e realtimeE
 	}
 
 	if e.Response.Status == "failed" && !cancelled {
-		return &ProviderError{"openai", "response_failed", "Realtime response failed"}
+		return &ProviderError{Provider: "openai", Code: "response_failed", Detail: "Realtime response failed"}
 	}
 
 	return nil
@@ -429,7 +417,7 @@ func (v *RealtimeConversation) cancelResponses(ctx context.Context) error {
 	for id := range v.responses {
 		if !v.cancelled[id] {
 			v.cancelled[id] = true
-			event := "call-cancel-" + NewCallSession("", "", "").SessionID
+			event := "call-cancel-" + uuid.NewString()
 			v.cancelEvents[event] = time.Now().Add(30 * time.Second)
 			pending = append(pending, cancel{id, event})
 		}

@@ -10,8 +10,8 @@ import (
 	"time"
 )
 
-// Events is an unbounded FIFO, matching asyncio.Queue. Deadline ordering uses observation time.
-type Events struct {
+// eventQueue is an unbounded FIFO. Deadline ordering uses observation time.
+type eventQueue struct {
 	mu      sync.Mutex
 	queue   []RuntimeEvent
 	pending *RuntimeEvent
@@ -19,9 +19,9 @@ type Events struct {
 	wake    chan struct{}
 }
 
-func NewEvents() *Events { return &Events{wake: make(chan struct{}, 1)} }
+func newEventQueue() *eventQueue { return &eventQueue{wake: make(chan struct{}, 1)} }
 
-func (e *Events) Emit(event RuntimeEvent) bool {
+func (e *eventQueue) Emit(event RuntimeEvent) bool {
 	e.mu.Lock()
 	defer e.mu.Unlock()
 
@@ -43,7 +43,7 @@ func (e *Events) Emit(event RuntimeEvent) bool {
 	return true
 }
 
-func (e *Events) Receive(ctx context.Context, d *Deadlines) (RuntimeEvent, error) {
+func (e *eventQueue) Receive(ctx context.Context, d *deadlines) (RuntimeEvent, error) {
 	for {
 		e.mu.Lock()
 		var event *RuntimeEvent
@@ -112,7 +112,7 @@ func (e *Events) Receive(ctx context.Context, d *Deadlines) (RuntimeEvent, error
 	}
 }
 
-func (e *Events) Close() {
+func (e *eventQueue) Close() {
 	e.mu.Lock()
 	e.closed = true
 	e.queue = nil
@@ -130,18 +130,18 @@ type operation struct {
 	done   chan struct{}
 }
 
-type Operations struct {
+type operations struct {
 	mu       sync.Mutex
 	tasks    map[Command]*operation
 	stopping bool
 	emit     EventSink
 }
 
-func NewOperations(emit EventSink) *Operations {
-	return &Operations{tasks: map[Command]*operation{}, emit: emit}
+func newOperations(emit EventSink) *operations {
+	return &operations{tasks: map[Command]*operation{}, emit: emit}
 }
 
-func (o *Operations) Start(command Command, fn func(context.Context) (AcceptResult, error), timeout float64) {
+func (o *operations) Start(command Command, fn func(context.Context) (AcceptResult, error), timeout float64) {
 	o.mu.Lock()
 
 	if o.stopping || o.tasks[command] != nil {
@@ -193,7 +193,7 @@ func (o *Operations) Start(command Command, fn func(context.Context) (AcceptResu
 	}()
 }
 
-func (o *Operations) BeginStop() {
+func (o *operations) BeginStop() {
 	o.mu.Lock()
 	o.stopping = true
 
@@ -204,7 +204,7 @@ func (o *Operations) BeginStop() {
 	o.mu.Unlock()
 }
 
-func (o *Operations) Close() error {
+func (o *operations) Close() error {
 	o.BeginStop()
 	o.mu.Lock()
 	tasks := make([]*operation, 0, len(o.tasks))
@@ -222,7 +222,7 @@ func (o *Operations) Close() error {
 	return nil
 }
 
-func (o *Operations) PendingTaskCount() int {
+func (o *operations) PendingTaskCount() int {
 	o.mu.Lock()
 	defer o.mu.Unlock()
 	n := 0
@@ -268,16 +268,16 @@ func defaultDependencies() Dependencies {
 	}}
 }
 
-type CleanupResult struct {
+type cleanupResult struct {
 	IsRemoteFinishUnknown, IsLocalCloseUnknown bool
 	UnfinishedTaskCount                        int
 	IsRecordingExportRunning                   bool
 }
 
-type CallResources struct {
+type callResources struct {
 	options       CallOptions
 	session       *CallSession
-	Operations    *Operations
+	operations    *operations
 	Recorder      *CallRecorder
 	Voice         VoiceConversation
 	Audio         *AudioBridge
@@ -289,8 +289,8 @@ type CallResources struct {
 	closing       atomic.Bool
 }
 
-func newCallResources(c ProviderConfig, o CallOptions, s *CallSession, emit EventSink, deps Dependencies) *CallResources {
-	r := &CallResources{options: o, session: s, Operations: NewOperations(emit), Recorder: NewCallRecorder(o.Recording)}
+func newCallResources(c ProviderConfig, o CallOptions, s *CallSession, emit EventSink, deps Dependencies) *callResources {
+	r := &callResources{options: o, session: s, operations: newOperations(emit), Recorder: NewCallRecorder(o.Recording)}
 	r.Voice = deps.NewVoice(c, o.Playback, emit, s.Language, o.ShutdownSeconds, o.Vad)
 	r.Audio = NewAudioBridge(r.Voice, r.Voice, r.Recorder, emit, o.InputAudio, o.OutputSoftening)
 	r.API = deps.NewAPI(c, s, emit)
@@ -298,7 +298,7 @@ func newCallResources(c ProviderConfig, o CallOptions, s *CallSession, emit Even
 	return r
 }
 
-func (r *CallResources) Prepare(ctx context.Context) error {
+func (r *callResources) Prepare(ctx context.Context) error {
 	if err := r.Voice.Start(ctx); err != nil {
 		return err
 	}
@@ -310,14 +310,14 @@ func (r *CallResources) Prepare(ctx context.Context) error {
 	return r.API.Open(ctx, r.Audio)
 }
 
-func (r *CallResources) recordCloseError(stage string, err error) {
+func (r *callResources) recordCloseError(stage string, err error) {
 	r.cleanupMu.Lock()
 	r.cleanupErrors = append(r.cleanupErrors, &CallCleanupError{stage, err})
 	r.cleanupMu.Unlock()
 	slog.Error("Call cleanup failed", "stage", stage, "error_type", fmt.Sprintf("%T", err))
 }
 
-func (r *CallResources) closeStep(stage string, fn func() error) {
+func (r *callResources) closeStep(stage string, fn func() error) {
 	done := make(chan error, 1)
 	r.pending.Add(1)
 
@@ -348,11 +348,11 @@ func (r *CallResources) closeStep(stage string, fn func() error) {
 	}
 }
 
-func (r *CallResources) Close() error {
+func (r *callResources) Close() error {
 	r.closing.Store(true)
-	r.Operations.BeginStop()
-	r.closeStep("operations_close", r.Operations.Close)
-	// Operations that ignore cancellation retain their owners until they finish.
+	r.operations.BeginStop()
+	r.closeStep("operations_close", r.operations.Close)
+	// operations that ignore cancellation retain their owners until they finish.
 	// Other stages still run bounded waits; acquisition guards close late resources.
 	r.closeStep("remote_finish", func() error {
 		ctx, cancel := context.WithTimeout(context.Background(), seconds(r.options.ShutdownSeconds))
@@ -390,10 +390,10 @@ func (r *CallResources) Close() error {
 	return nil
 }
 
-func (r *CallResources) CleanupResult() CleanupResult {
+func (r *callResources) cleanupResult() cleanupResult {
 	r.cleanupMu.Lock()
 	defer r.cleanupMu.Unlock()
-	out := CleanupResult{UnfinishedTaskCount: int(r.pending.Load()) + r.Operations.PendingTaskCount(), IsRecordingExportRunning: r.Recorder.ExportRunning()}
+	out := cleanupResult{UnfinishedTaskCount: int(r.pending.Load()) + r.operations.PendingTaskCount(), IsRecordingExportRunning: r.Recorder.ExportRunning()}
 	out.IsRemoteFinishUnknown = r.FinishResult == FinishResultUnknown
 
 	for _, e := range r.cleanupErrors {
@@ -409,38 +409,60 @@ func (r *CallResources) CleanupResult() CleanupResult {
 	return out
 }
 
-func (r *CallResources) TakeResult(keep bool) *CallExecutionResult {
+func (r *callResources) TakeResult(keep bool) *CallExecutionResult {
+	path := ""
+
 	if !keep {
 		r.Recorder.Discard()
-
-		return NewCallExecutionResult("")
+	} else {
+		path = r.Recorder.TakeReadyOrDiscard()
 	}
 
-	return NewCallExecutionResult(r.Recorder.TakeReadyOrDiscard())
+	result := NewCallExecutionResult(path)
+	result.recordingErr = r.recordingFailure()
+
+	return result
 }
 
-type CallRunner struct {
-	Session         *CallSession
+func (r *callResources) recordingFailure() error {
+	if err := r.Recorder.failure(); err != nil {
+		return err
+	}
+
+	r.cleanupMu.Lock()
+	defer r.cleanupMu.Unlock()
+
+	for _, err := range r.cleanupErrors {
+		if err.Stage == "recording_close" {
+			return &RecordingError{Stage: "finish", Cause: err.Cause}
+		}
+	}
+
+	return nil
+}
+
+type callRunner struct {
+	session         *CallSession
 	transition      TransitionCallback
 	config          ProviderConfig
 	options         CallOptions
 	deps            Dependencies
-	events          *Events
-	deadlines       *Deadlines
-	resources       *CallResources
+	events          *eventQueue
+	deadlines       *deadlines
+	resources       *callResources
 	incomingCallID  string
 	incoming        bool
 	admissionMu     sync.Mutex
 	acceptingEvents bool
 }
 
-func newCallRunner(s *CallSession, t TransitionCallback, c ProviderConfig, o CallOptions, deps Dependencies) *CallRunner {
-	return &CallRunner{Session: s, transition: t, config: c, options: o, deps: deps, events: NewEvents(), deadlines: NewDeadlines(), incoming: s.Direction == CallDirectionIncoming, incomingCallID: s.CallID, acceptingEvents: true}
+func newCallRunner(s *CallSession, t TransitionCallback, c ProviderConfig, o CallOptions, deps Dependencies) *callRunner {
+	return &callRunner{session: s, transition: t, config: c, options: o, deps: deps, events: newEventQueue(), deadlines: newDeadlines(), incoming: s.Direction == CallDirectionIncoming, incomingCallID: s.CallID, acceptingEvents: true}
 }
 
-func (r *CallRunner) RequestStop() { r.events.Emit(runtimeEvent("stop_requested")) }
+func (r *callRunner) RequestStop() { r.events.Emit(runtimeEvent("stop_requested")) }
 
-func (r *CallRunner) NotifyIncomingEnded(id string) bool {
+func (r *callRunner) NotifyIncomingEnded(id string) bool {
 	r.admissionMu.Lock()
 	defer r.admissionMu.Unlock()
 
@@ -451,60 +473,49 @@ func (r *CallRunner) NotifyIncomingEnded(id string) bool {
 	return r.events.Emit(RuntimeEvent{Kind: "caller_left", CallID: id})
 }
 
-func (r *CallRunner) apply(e CallEvent, d ...TransitionDetails) StateTransition {
-	// Close admission before a terminal transition. Callbacks may re-enter the
-	// service, so they must run outside admissionMu.
-	if rule, ok := callRules[transitionKey{r.Session.State, e}]; ok && (rule.Direction == "" || rule.Direction == r.Session.Direction) {
-		change := rule.Change
+func (r *callRunner) apply(e CallEvent, d ...TransitionDetails) StateTransition {
+	// eventQueue already provide a FIFO for notifications received during callbacks.
+	// Decide whether to consume them from the actual state, never predicted rules.
 
-		if rule.Resolver != nil {
-			change = rule.Resolver(r.Session)
-		}
+	transition := r.transition(r.session, e, d...)
 
-		if (&CallSession{State: change.Target}).Finished() || change.Target == CallStateEnding {
-			r.stopAcceptingEvents()
-		}
-	}
-
-	transition := r.transition(r.Session, e, d...)
-
-	if r.Session.Finished() || r.Session.State == CallStateEnding {
+	if r.session.Finished() || r.session.State == CallStateEnding {
 		r.stopAcceptingEvents()
 	}
 
 	return transition
 }
 
-func (r *CallRunner) stopAcceptingEvents() {
+func (r *callRunner) stopAcceptingEvents() {
 	r.admissionMu.Lock()
 	r.acceptingEvents = false
 	r.admissionMu.Unlock()
 }
 
-func (r *CallRunner) offerExpired() bool {
-	return r.incoming && !r.Session.IncomingDeadline.After(time.Now())
+func (r *callRunner) offerExpired() bool {
+	return r.incoming && !r.session.IncomingDeadline.After(time.Now())
 }
 
-func (r *CallRunner) Run(ctx context.Context) (result *CallExecutionResult, err error) {
+func (r *callRunner) Run(ctx context.Context) (*CallExecutionResult, error) {
 	defer r.events.Close()
 	defer r.stopAcceptingEvents()
-	s := r.Session
 
-	defer func() {
-		if err != nil {
-			event := CallEventInternalError
-
-			if ctx.Err() != nil {
-				event = CallEventShutdownRequested
-			}
-
-			code := errorCode(err)
-			r.apply(event, TransitionDetails{ErrorCode: &code})
-		}
-	}()
-
-	if err = s.Validate(); err != nil {
+	if err := r.validateExecution(); err != nil {
 		return nil, err
+	}
+
+	if r.offerExpired() {
+		return r.rejectExpiredOffer(), nil
+	}
+
+	return r.runValidated(ctx)
+}
+
+func (r *callRunner) validateExecution() error {
+	s := r.session
+
+	if err := s.Validate(); err != nil {
+		return err
 	}
 
 	expected := CallStateDialing
@@ -514,24 +525,31 @@ func (r *CallRunner) Run(ctx context.Context) (result *CallExecutionResult, err 
 	}
 
 	if s.State != expected {
-		return nil, validationError("dequeue session before executing a call")
+		return validationError("dequeue session before executing a call")
 	}
 
 	if r.incoming && (s.CallID == "" || s.IncomingDeadline.IsZero()) {
-		return nil, validationError("incoming call requires ID and deadline")
+		return validationError("incoming call requires ID and deadline")
 	}
 
-	if r.offerExpired() {
-		r.apply(CallEventIncomingExpired)
-		api := r.deps.NewAPI(r.config, s, r.events.Emit)
-		c, cancel := context.WithTimeout(context.Background(), seconds(r.options.CommandSeconds))
-		_, _ = api.RejectOffer(c)
-		cancel()
-		_ = api.Close()
+	return nil
+}
 
-		return NewCallExecutionResult(""), nil
-	}
+func (r *callRunner) rejectExpiredOffer() *CallExecutionResult {
+	r.apply(CallEventIncomingExpired)
+	api := r.deps.NewAPI(r.config, r.session, r.events.Emit)
+	ctx, cancel := context.WithTimeout(context.Background(), seconds(r.options.CommandSeconds))
 
+	defer cancel()
+
+	_, _ = api.RejectOffer(ctx)
+	_ = api.Close()
+
+	return NewCallExecutionResult("")
+}
+
+func (r *callRunner) runValidated(ctx context.Context) (*CallExecutionResult, error) {
+	s := r.session
 	r.resources = newCallResources(r.config, r.options, s, r.events.Emit, r.deps)
 	defer r.resources.Recorder.Discard()
 	r.deadlines.Arm(DeadlineKindSetup, time.Now().Add(seconds(r.options.SetupSeconds)))
@@ -541,75 +559,88 @@ func (r *CallRunner) Run(ctx context.Context) (result *CallExecutionResult, err 
 	}
 
 	r.start(CommandPrepare, func(c context.Context) (AcceptResult, error) { return "", r.resources.Prepare(c) }, r.options.SetupSeconds)
-
-	for !s.Finished() && s.State != CallStateEnding {
-		var event RuntimeEvent
-		event, err = r.events.Receive(ctx, r.deadlines)
-
-		if err != nil {
-			break
-		}
-
-		if err = r.dispatch(event); err != nil {
-			break
-		}
-	}
-
+	err := r.receiveEvents(ctx)
 	r.stopAcceptingEvents()
 
 	if err != nil {
-		event := CallEventInternalError
-
-		if ctx.Err() != nil {
-			event = CallEventShutdownRequested
-		}
-
-		code := errorCode(err)
-		r.apply(event, TransitionDetails{ErrorCode: &code})
+		r.failExecution(ctx, err)
 	}
 
 	cleanupErr := r.resources.Close()
 
-	if err == nil {
-		err = cleanupErr
+	if cleanupErr != nil && err == nil {
+		r.failExecution(ctx, cleanupErr)
 	}
 
-	if err != nil {
+	if err = errors.Join(err, cleanupErr); err != nil {
 		return nil, err
 	}
 
-	if s.State == CallStateEnding {
-		r.resources.cleanupMu.Lock()
-		finish := r.resources.FinishResult
-		r.resources.cleanupMu.Unlock()
-
-		if finish == FinishResultFinished || finish == FinishResultAlreadyEnded {
-			r.apply(CallEventHangupConfirmed)
-		} else {
-			code := "finish_" + string(finish)
-
-			if finish == "" {
-				code = "finish_missing_result"
-			}
-
-			r.apply(CallEventInternalError, TransitionDetails{ErrorCode: &code})
-		}
-	}
+	r.confirmHangup()
 
 	return r.resources.TakeResult(s.State == CallStateRemoteEnded || s.State == CallStateTalkTimeout), nil
 }
 
-func (r *CallRunner) start(cmd Command, fn func(context.Context) (AcceptResult, error), timeout ...float64) {
+func (r *callRunner) receiveEvents(ctx context.Context) error {
+	for !r.session.Finished() && r.session.State != CallStateEnding {
+		event, err := r.events.Receive(ctx, r.deadlines)
+
+		if err != nil {
+			return err
+		}
+
+		if err := r.dispatch(event); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (r *callRunner) failExecution(ctx context.Context, err error) {
+	event := CallEventInternalError
+
+	if ctx.Err() != nil {
+		event = CallEventShutdownRequested
+	}
+
+	code := errorCode(err)
+	r.apply(event, TransitionDetails{ErrorCode: &code})
+}
+
+func (r *callRunner) confirmHangup() {
+	if r.session.State != CallStateEnding {
+		return
+	}
+
+	r.resources.cleanupMu.Lock()
+	finish := r.resources.FinishResult
+	r.resources.cleanupMu.Unlock()
+
+	if finish == FinishResultFinished || finish == FinishResultAlreadyEnded {
+		r.apply(CallEventHangupConfirmed)
+		return
+	}
+
+	code := "finish_" + string(finish)
+
+	if finish == "" {
+		code = "finish_missing_result"
+	}
+
+	r.apply(CallEventInternalError, TransitionDetails{ErrorCode: &code})
+}
+
+func (r *callRunner) start(cmd Command, fn func(context.Context) (AcceptResult, error), timeout ...float64) {
 	limit := r.options.CommandSeconds
 
 	if len(timeout) > 0 {
 		limit = timeout[0]
 	}
 
-	r.resources.Operations.Start(cmd, fn, limit)
+	r.resources.operations.Start(cmd, fn, limit)
 }
 
-func (r *CallRunner) dispatch(e RuntimeEvent) error {
+func (r *callRunner) dispatch(e RuntimeEvent) error {
 	switch e.Kind {
 	case "command_completed":
 		return r.commandCompleted(e.Command, e.ObservedAt, e.Result)
@@ -636,7 +667,7 @@ func (r *CallRunner) dispatch(e RuntimeEvent) error {
 					}
 				}()
 
-				r.options.OnAudioLoss(r.Session, e.Loss)
+				r.options.OnAudioLoss(r.session, e.Loss)
 			}()
 		}
 	}
@@ -644,7 +675,7 @@ func (r *CallRunner) dispatch(e RuntimeEvent) error {
 	return nil
 }
 
-func (r *CallRunner) commandCompleted(cmd Command, at time.Time, result AcceptResult) error {
+func (r *callRunner) commandCompleted(cmd Command, at time.Time, result AcceptResult) error {
 	switch cmd {
 	case CommandPrepare:
 		r.deadlines.Disarm(DeadlineKindSetup)
@@ -663,7 +694,7 @@ func (r *CallRunner) commandCompleted(cmd Command, at time.Time, result AcceptRe
 	case CommandDial:
 		r.apply(CallEventDialAccepted)
 
-		if r.Session.State == CallStateRinging {
+		if r.session.State == CallStateRinging {
 			r.deadlines.Arm(DeadlineKindRing, at.Add(seconds(r.options.RingSeconds)))
 		}
 
@@ -683,7 +714,7 @@ func (r *CallRunner) commandCompleted(cmd Command, at time.Time, result AcceptRe
 	return nil
 }
 
-func (r *CallRunner) commandFailed(cmd Command, err error) error {
+func (r *callRunner) commandFailed(cmd Command, err error) error {
 	if cmd == CommandAccept || cmd == CommandReconcile {
 		if errorCode(err) == "offer_gone" {
 			event := CallEventCallerLeft
@@ -697,7 +728,7 @@ func (r *CallRunner) commandFailed(cmd Command, err error) error {
 			return nil
 		}
 
-		if r.Session.RemoteAccepted {
+		if r.session.RemoteAccepted {
 			return nil
 		}
 
@@ -711,8 +742,8 @@ func (r *CallRunner) commandFailed(cmd Command, err error) error {
 	return err
 }
 
-func (r *CallRunner) answered(id string, at time.Time) {
-	if r.incoming && id != r.Session.CallID || r.Session.RemoteAccepted {
+func (r *callRunner) answered(id string, at time.Time) {
+	if r.incoming && id != r.session.CallID || r.session.RemoteAccepted {
 		return
 	}
 
@@ -722,8 +753,8 @@ func (r *CallRunner) answered(id string, at time.Time) {
 	r.activateConversation(at)
 }
 
-func (r *CallRunner) beginBridge() {
-	if r.Session.BridgeReady {
+func (r *callRunner) beginBridge() {
+	if r.session.BridgeReady {
 		return
 	}
 
@@ -731,8 +762,8 @@ func (r *CallRunner) beginBridge() {
 	r.start(CommandBridge, func(ctx context.Context) (AcceptResult, error) { return "", r.resources.API.StartAudio(ctx) }, r.options.SetupSeconds)
 }
 
-func (r *CallRunner) activateConversation(at time.Time) {
-	if r.Session.State != CallStateInCall {
+func (r *callRunner) activateConversation(at time.Time) {
+	if r.session.State != CallStateInCall {
 		return
 	}
 
@@ -740,25 +771,25 @@ func (r *CallRunner) activateConversation(at time.Time) {
 	r.deadlines.Arm(DeadlineKindTalk, at.Add(seconds(r.options.TalkSeconds)))
 	r.resources.Audio.ActivateRecording()
 	r.start(CommandGreet, func(ctx context.Context) (AcceptResult, error) {
-		return "", r.resources.Voice.PromptOnce(ctx, r.Session.Prompt)
+		return "", r.resources.Voice.PromptOnce(ctx, r.session.Prompt)
 	})
 }
 
-func (r *CallRunner) callerLeft(id string) {
-	if !r.incoming || id != r.Session.CallID {
+func (r *callRunner) callerLeft(id string) {
+	if !r.incoming || id != r.session.CallID {
 		return
 	}
 
 	event := CallEventCallerLeft
 
-	if r.Session.RemoteAccepted {
+	if r.session.RemoteAccepted {
 		event = CallEventRemoteIdle
 	}
 
 	r.apply(event)
 }
 
-func (r *CallRunner) deadline(k DeadlineKind) error {
+func (r *callRunner) deadline(k DeadlineKind) error {
 	event := map[DeadlineKind]CallEvent{DeadlineKindOffer: CallEventIncomingExpired, DeadlineKindRing: CallEventRingTimerExpired, DeadlineKindTalk: CallEventTalkTimerExpired}[k]
 
 	if event == "" {

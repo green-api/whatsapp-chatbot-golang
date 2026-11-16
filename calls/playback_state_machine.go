@@ -84,7 +84,7 @@ func (f *PlaybackStateMachine) Apply(e PlaybackEvent) PlaybackState {
 	return f.state
 }
 
-// PlaybackController retains the Python policies; a mutex replaces its event-loop ownership.
+// PlaybackController manages bounded playback, interruption and drain policies.
 type PlaybackController struct {
 	mu                                                 sync.Mutex
 	options                                            PlaybackOptions

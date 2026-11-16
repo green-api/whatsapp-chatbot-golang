@@ -15,7 +15,7 @@ type WhatsAppCallService struct {
 	deps    Dependencies
 	gate    chan struct{}
 	mu      sync.Mutex
-	runner  *CallRunner
+	runner  *callRunner
 	stopped bool
 }
 
@@ -63,6 +63,8 @@ func (s *WhatsAppCallService) RequestStop() {
 	}
 }
 
+// NotifyIncomingEnded reports queue acceptance, not completed processing.
+// Notifications queued during a transition are ignored if the call has ended.
 func (s *WhatsAppCallService) NotifyIncomingEnded(id string) bool {
 	s.mu.Lock()
 	r := s.runner
@@ -127,7 +129,7 @@ func (s *WhatsAppCallService) Execute(ctx context.Context, session *CallSession,
 
 	defer func() {
 		if runner.resources != nil {
-			out := runner.resources.CleanupResult()
+			out := runner.resources.cleanupResult()
 
 			if out.IsRemoteFinishUnknown || out.IsLocalCloseUnknown || out.IsRecordingExportRunning {
 				slog.Error("Call cleanup not fully finished; later call attempts remain enabled", "session", session.SessionID, "cleanup", out)

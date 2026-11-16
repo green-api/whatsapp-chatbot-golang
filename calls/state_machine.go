@@ -2,15 +2,15 @@ package calls
 
 import "time"
 
-type Change struct {
+type stateChange struct {
 	Target                                      CallState
 	Reason                                      CallEndReason
 	Queued, Started, Answered, Bridge, Accepted bool
 }
 
-type TransitionRule struct {
-	Change    Change
-	Resolver  func(*CallSession) Change
+type transitionRule struct {
+	change    stateChange
+	Resolver  func(*CallSession) stateChange
 	Direction CallDirection
 }
 
@@ -19,72 +19,72 @@ type transitionKey struct {
 	Event CallEvent
 }
 
-func dequeue(s *CallSession) Change {
+func dequeue(s *CallSession) stateChange {
 	target := CallStateDialing
 
 	if s.Direction == CallDirectionIncoming {
 		target = CallStateRinging
 	}
 
-	return Change{Target: target, Started: true}
+	return stateChange{Target: target, Started: true}
 }
 
-func answer(s *CallSession) Change {
+func answer(s *CallSession) stateChange {
 	target := CallStateConnecting
 
 	if s.BridgeReady {
 		target = CallStateInCall
 	}
 
-	return Change{Target: target, Answered: true}
+	return stateChange{Target: target, Answered: true}
 }
 
-func bridge(s *CallSession) Change {
+func bridge(s *CallSession) stateChange {
 	target := s.State
 
 	if s.RemoteAccepted {
 		target = CallStateInCall
 	}
 
-	return Change{Target: target, Bridge: true}
+	return stateChange{Target: target, Bridge: true}
 }
 
-func idle(s *CallSession) Change {
+func idle(s *CallSession) stateChange {
 	if s.RemoteAccepted {
-		return Change{Target: CallStateRemoteEnded, Reason: CallEndReasonRemoteHangup}
+		return stateChange{Target: CallStateRemoteEnded, Reason: CallEndReasonRemoteHangup}
 	}
 
-	return Change{Target: CallStateRejected, Reason: CallEndReasonRemoteRejected}
+	return stateChange{Target: CallStateRejected, Reason: CallEndReasonRemoteRejected}
 }
 
-func hangup(s *CallSession) Change {
+func hangup(s *CallSession) stateChange {
 	target := map[CallEndReason]CallState{CallEndReasonRingTimeout: CallStateRingTimeout, CallEndReasonTalkTimeout: CallStateTalkTimeout, CallEndReasonShutdown: CallStateCancelled, CallEndReasonUserCancelled: CallStateCancelled}[s.EndReason]
 
 	if target == "" {
 		target = CallStateFailed
 	}
 
-	return Change{Target: target}
+	return stateChange{Target: target}
 }
 
-func rules() map[transitionKey]TransitionRule {
-	r := map[transitionKey]TransitionRule{
-		{CallStateTriggered, CallEventEnqueued}:      {Change: Change{Target: CallStateQueued, Queued: true}},
+func rules() map[transitionKey]transitionRule {
+	r := map[transitionKey]transitionRule{
+		{CallStateTriggered, CallEventEnqueued}:      {change: stateChange{Target: CallStateQueued, Queued: true}},
 		{CallStateQueued, CallEventDequeued}:         {Resolver: dequeue},
-		{CallStateDialing, CallEventDialAccepted}:    {Change: Change{Target: CallStateRinging}},
+		{CallStateDialing, CallEventDialAccepted}:    {change: stateChange{Target: CallStateRinging}},
 		{CallStateEnding, CallEventHangupConfirmed}:  {Resolver: hangup},
-		{CallStateInCall, CallEventTalkTimerExpired}: {Change: Change{Target: CallStateEnding, Reason: CallEndReasonTalkTimeout}},
+		{CallStateInCall, CallEventTalkTimerExpired}: {change: stateChange{Target: CallStateEnding, Reason: CallEndReasonTalkTimeout}},
 	}
 
 	for _, state := range []CallState{CallStateDialing, CallStateRinging, CallStateConnecting, CallStateInCall} {
-		r[transitionKey{state, CallEventBridgeReady}] = TransitionRule{Resolver: bridge}
-		r[transitionKey{state, CallEventRemoteIdle}] = TransitionRule{Resolver: idle}
-		r[transitionKey{state, CallEventIncomingAccepted}] = TransitionRule{Change: Change{Target: state, Accepted: true}, Direction: CallDirectionIncoming}
+		r[transitionKey{state, CallEventBridgeReady}] = transitionRule{Resolver: bridge}
+		r[transitionKey{state, CallEventRemoteIdle}] = transitionRule{Resolver: idle}
+		r[transitionKey{state, CallEventIncomingAccepted}] = transitionRule{change: stateChange{Target: state, Accepted: true}, Direction: CallDirectionIncoming}
 	}
 
 	for _, state := range []CallState{CallStateDialing, CallStateRinging} {
-		r[transitionKey{state, CallEventRemoteAccepted}] = TransitionRule{Resolver: answer}
-		r[transitionKey{state, CallEventRingTimerExpired}] = TransitionRule{Change: Change{Target: CallStateEnding, Reason: CallEndReasonRingTimeout}}
+		r[transitionKey{state, CallEventRemoteAccepted}] = transitionRule{Resolver: answer}
+		r[transitionKey{state, CallEventRingTimerExpired}] = transitionRule{change: stateChange{Target: CallStateEnding, Reason: CallEndReasonRingTimeout}}
 	}
 
 	for _, state := range []CallState{CallStateTriggered, CallStateQueued, CallStateDialing, CallStateRinging, CallStateConnecting, CallStateInCall, CallStateEnding} {
@@ -95,13 +95,13 @@ func rules() map[transitionKey]TransitionRule {
 				target = CallStateFailed
 			}
 
-			r[transitionKey{state, event}] = TransitionRule{Change: Change{Target: target, Reason: reason}}
+			r[transitionKey{state, event}] = transitionRule{change: stateChange{Target: target, Reason: reason}}
 		}
 	}
 
 	for _, state := range []CallState{CallStateTriggered, CallStateQueued, CallStateRinging} {
 		for event, reason := range map[CallEvent]CallEndReason{CallEventIncomingExpired: CallEndReasonIncomingExpired, CallEventCallerLeft: CallEndReasonCallerLeft} {
-			r[transitionKey{state, event}] = TransitionRule{Change: Change{Target: CallStateRejected, Reason: reason}, Direction: CallDirectionIncoming}
+			r[transitionKey{state, event}] = transitionRule{change: stateChange{Target: CallStateRejected, Reason: reason}, Direction: CallDirectionIncoming}
 		}
 	}
 
@@ -121,7 +121,7 @@ func (f *CallStateMachine) Apply(s *CallSession, event CallEvent, details ...Tra
 		return StateTransition{s.State, s.State, event, false}
 	}
 
-	change := r.Change
+	change := r.change
 
 	if r.Resolver != nil {
 		change = r.Resolver(s)
@@ -136,13 +136,13 @@ func (f *CallStateMachine) Apply(s *CallSession, event CallEvent, details ...Tra
 	return f.commit(s, event, change, time.Now().UTC(), d)
 }
 
-func (f *CallStateMachine) findRule(s *CallSession, e CallEvent) (TransitionRule, bool) {
+func (f *CallStateMachine) findRule(s *CallSession, e CallEvent) (transitionRule, bool) {
 	r, ok := callRules[transitionKey{s.State, e}]
 
 	return r, ok && (r.Direction == "" || r.Direction == s.Direction)
 }
 
-func (f *CallStateMachine) commit(s *CallSession, e CallEvent, c Change, now time.Time, d TransitionDetails) StateTransition {
+func (f *CallStateMachine) commit(s *CallSession, e CallEvent, c stateChange, now time.Time, d TransitionDetails) StateTransition {
 	prev := s.State
 	s.State = c.Target
 

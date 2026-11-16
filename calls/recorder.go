@@ -10,6 +10,7 @@ import (
 	"os"
 	"os/exec"
 	"strconv"
+	"strings"
 	"sync"
 )
 
@@ -170,8 +171,33 @@ func (c *PcmCapture) Close() error {
 
 type Mp3Encoder struct{ Options RecordingOptions }
 
-// Encode uses FFmpeg/libmp3lame in place of Python's PyAV/libmp3lame.
-// PCM tracks are streamed and summed with saturation, preserving sparse-file gaps.
+// RecordingError reports a recording failure without exposing file paths in Error.
+// Diagnostic contains bounded encoder output for explicit inspection.
+type RecordingError struct {
+	Stage      string
+	Cause      error
+	Diagnostic string
+}
+
+func (e *RecordingError) Error() string {
+	var exit *exec.ExitError
+	if errors.As(e.Cause, &exit) {
+		return fmt.Sprintf("recording %s failed (exit %d)", e.Stage, exit.ExitCode())
+	}
+	return "recording " + e.Stage + " failed"
+}
+func (e *RecordingError) Unwrap() error { return e.Cause }
+
+type encoderDiagnostics struct{ data []byte }
+
+func (d *encoderDiagnostics) Write(p []byte) (int, error) {
+	const limit = 4096
+	n := len(p)
+	d.data = append(d.data, p[:min(len(p), limit-len(d.data))]...)
+	return n, nil
+}
+
+// Encode streams saturated PCM16 mono mixing to FFmpeg/libmp3lame.
 func (e Mp3Encoder) Encode(ctx context.Context, tracks map[Track]*os.File, path string) error {
 	bin := e.Options.EncoderPath
 
@@ -180,66 +206,96 @@ func (e Mp3Encoder) Encode(ctx context.Context, tracks map[Track]*os.File, path 
 	}
 
 	cmd := exec.CommandContext(ctx, bin, "-hide_banner", "-loglevel", "error", "-f", "s16le", "-ar", "24000", "-ac", "1", "-i", "pipe:0", "-codec:a", "libmp3lame", "-b:a", strconv.Itoa(e.Options.BitrateBPS), "-y", path)
+	diagnostic := &encoderDiagnostics{}
+	cmd.Stderr = diagnostic
 	in, err := cmd.StdinPipe()
 
 	if err != nil {
-		return err
+		return &RecordingError{Stage: "encoder_input", Cause: err}
 	}
 
-	if err = cmd.Start(); err != nil {
-		return err
+	if err := cmd.Start(); err != nil {
+		_ = in.Close()
+		return &RecordingError{Stage: "encoder_start", Cause: err}
 	}
 
-	bufs := [][]byte{make([]byte, e.Options.ExportBlockSamples*2), make([]byte, e.Options.ExportBlockSamples*2)}
+	writeErr := e.writeTracks(in, tracks)
+	closeErr := in.Close()
+	waitErr := cmd.Wait()
+
+	if err := errors.Join(writeErr, closeErr, waitErr, ctx.Err()); err != nil {
+		detail := strings.ReplaceAll(string(diagnostic.data), path, "[recording]")
+		return &RecordingError{Stage: "encode", Cause: err, Diagnostic: strings.TrimSpace(detail)}
+	}
+
+	return nil
+}
+
+func (e Mp3Encoder) writeTracks(out io.Writer, tracks map[Track]*os.File) error {
+	if e.Options.ExportBlockSamples <= 0 {
+		return errors.New("export block size must be positive")
+	}
+
 	files := []*os.File{tracks[TrackCaller], tracks[TrackBot]}
+	bufs := [][]byte{make([]byte, e.Options.ExportBlockSamples*2), make([]byte, e.Options.ExportBlockSamples*2)}
 
 	for _, f := range files {
 		if f != nil {
-			f.Seek(0, io.SeekStart)
-		}
-	}
-
-	var writeErr error
-
-	for {
-		sizes := [2]int{}
-
-		for i, f := range files {
-			clear(bufs[i])
-
-			if f != nil {
-				n, er := io.ReadFull(f, bufs[i])
-				sizes[i] = n
-
-				if er != nil && er != io.EOF && er != io.ErrUnexpectedEOF {
-					writeErr = er
-				}
+			if _, err := f.Seek(0, io.SeekStart); err != nil {
+				return err
 			}
 		}
-
-		n := max(sizes[0], sizes[1])
-
-		if n == 0 || writeErr != nil {
-			break
-		}
-
-		mixed := make([]byte, n)
-
-		for j := 0; j+1 < n; j += 2 {
-			a := int(int16(binary.LittleEndian.Uint16(bufs[0][j:])))
-			b := int(int16(binary.LittleEndian.Uint16(bufs[1][j:])))
-			binary.LittleEndian.PutUint16(mixed[j:], uint16(int16(max(-32768, min(32767, a+b)))))
-		}
-
-		if _, writeErr = in.Write(mixed); writeErr != nil {
-			break
-		}
 	}
 
-	in.Close()
-	err = cmd.Wait()
+	for {
+		n, err := readRecordingBlock(files, bufs)
 
-	return errors.Join(writeErr, err)
+		if err != nil {
+			return err
+		}
+
+		if n == 0 {
+			return nil
+		}
+
+		if _, err := out.Write(mixRecordingBlock(bufs, n)); err != nil {
+			return err
+		}
+	}
+}
+
+func readRecordingBlock(files []*os.File, bufs [][]byte) (int, error) {
+	size := 0
+
+	for i, f := range files {
+		clear(bufs[i])
+
+		if f == nil {
+			continue
+		}
+
+		n, err := io.ReadFull(f, bufs[i])
+
+		if err != nil && err != io.EOF && err != io.ErrUnexpectedEOF {
+			return 0, err
+		}
+
+		size = max(size, n)
+	}
+
+	return size, nil
+}
+
+func mixRecordingBlock(bufs [][]byte, n int) []byte {
+	mixed := make([]byte, n)
+
+	for j := 0; j+1 < n; j += 2 {
+		a := int(int16(binary.LittleEndian.Uint16(bufs[0][j:])))
+		b := int(int16(binary.LittleEndian.Uint16(bufs[1][j:])))
+		binary.LittleEndian.PutUint16(mixed[j:], uint16(int16(max(-32768, min(32767, a+b)))))
+	}
+
+	return mixed
 }
 
 type CallRecorder struct {
@@ -271,8 +327,23 @@ func (r *CallRecorder) Write(t Track, ch PcmChunk) error {
 func (r *CallRecorder) Disable(err error) {
 	r.mu.Lock()
 	r.disabled = true
+	r.err = errors.Join(r.err, err)
 	r.mu.Unlock()
+
+	var recording *RecordingError
+
+	if errors.As(err, &recording) {
+		slog.Warn("Call recording disabled", "stage", recording.Stage, "error", recording.Error(), "diagnostic", recording.Diagnostic)
+		return
+	}
+
 	slog.Warn("Call recording disabled", "error_type", fmt.Sprintf("%T", err))
+}
+
+func (r *CallRecorder) failure() error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	return r.err
 }
 
 func (r *CallRecorder) Finish(ctx context.Context) (string, error) {
@@ -301,45 +372,65 @@ func (r *CallRecorder) Finish(ctx context.Context) (string, error) {
 
 func (r *CallRecorder) finishBlocking() {
 	defer close(r.done)
+
+	defer func() {
+		if err := r.capture.Close(); err != nil {
+			r.Disable(&RecordingError{Stage: "capture_close", Cause: err})
+		}
+	}()
+
 	tracks, err := r.capture.Seal()
-	defer r.capture.Close()
+
+	if err != nil {
+		r.Disable(&RecordingError{Stage: "capture_seal", Cause: err})
+		return
+	}
+
 	r.mu.Lock()
 	skip := r.disabled || r.discarded || !r.options.Enabled
 	r.mu.Unlock()
 
-	if err != nil || skip || !r.capture.hasSamples {
+	if skip || !r.capture.hasSamples {
 		return
 	}
 
-	f, err := os.CreateTemp(r.options.Directory, "call-*.mp3")
-
-	if err == nil {
-		path := f.Name()
-		f.Close()
-		err = (Mp3Encoder{r.options}).Encode(context.Background(), tracks, path)
-		r.mu.Lock()
-
-		if err != nil || r.discarded {
-			os.Remove(path)
-		} else {
-			r.path = path
-		}
-
-		r.mu.Unlock()
-	}
+	path, err := r.export(tracks)
 
 	if err != nil {
 		r.Disable(err)
+		return
+	}
+
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	if r.discarded {
+		_ = os.Remove(path)
+	} else {
+		r.path = path
 	}
 }
 
-func (r *CallRecorder) Take() string {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-	path := r.path
-	r.path = ""
+func (r *CallRecorder) export(tracks map[Track]*os.File) (string, error) {
+	f, err := os.CreateTemp(r.options.Directory, "call-*.mp3")
 
-	return path
+	if err != nil {
+		return "", &RecordingError{Stage: "output_create", Cause: err}
+	}
+
+	path := f.Name()
+	err = f.Close()
+
+	if err == nil {
+		err = (Mp3Encoder{r.options}).Encode(context.Background(), tracks, path)
+	}
+
+	if err != nil {
+		removeErr := os.Remove(path)
+		return "", errors.Join(err, removeErr)
+	}
+
+	return path, nil
 }
 
 func (r *CallRecorder) TakeReadyOrDiscard() string {

@@ -8,7 +8,7 @@ import (
 	"time"
 )
 
-// Scenario and providers mirror tests/calls/fakes.py. Mocks stay next to the modules.
+// Scenario providers exercise call lifecycle and cleanup without external services.
 type scenario struct {
 	mu                  sync.Mutex
 	actions             []string
@@ -197,7 +197,7 @@ func testSession(incoming bool) *CallSession {
 	return s
 }
 
-func TestCallServicePythonScenarios(t *testing.T) {
+func TestCallServiceScenarios(t *testing.T) {
 	for _, incoming := range []bool{false, true} {
 		for _, which := range []string{"normal", "voice_start", "open", "bridge", "greet", "ring_timeout", "talk_timeout", "accept_failure_after_answer"} {
 			t.Run(string(map[bool]CallDirection{true: CallDirectionIncoming, false: CallDirectionOutgoing}[incoming])+"/"+which, func(t *testing.T) {
@@ -390,10 +390,10 @@ func TestStoppedServiceDoesNotStartNewCall(t *testing.T) {
 
 func TestObservationBeforeDeadlineWinsAndBoundaryIsLate(t *testing.T) {
 	for _, offset := range []time.Duration{-time.Nanosecond, 0, time.Nanosecond} {
-		d := NewDeadlines()
+		d := newDeadlines()
 		at := time.Now().Add(-time.Second)
 		d.Arm(DeadlineKindRing, at)
-		events := NewEvents()
+		events := newEventQueue()
 		events.Emit(RuntimeEvent{Kind: "remote_answered", ObservedAt: at.Add(offset)})
 		e, err := events.Receive(context.Background(), d)
 
@@ -416,14 +416,14 @@ func TestObservationBeforeDeadlineWinsAndBoundaryIsLate(t *testing.T) {
 }
 
 func TestNamedOperationRunsOnceAndReportsTimeout(t *testing.T) {
-	events := NewEvents()
-	ops := NewOperations(events.Emit)
+	events := newEventQueue()
+	ops := newOperations(events.Emit)
 	var calls int
 
 	ops.Start(CommandDial, func(ctx context.Context) (AcceptResult, error) { calls++; <-ctx.Done(); return "", ctx.Err() }, .01)
 
 	ops.Start(CommandDial, func(context.Context) (AcceptResult, error) { t.Error("duplicate operation"); return "", nil }, 1)
-	e, err := events.Receive(context.Background(), NewDeadlines())
+	e, err := events.Receive(context.Background(), newDeadlines())
 	ops.Close()
 
 	if err != nil || e.Kind != "command_failed" || !errors.Is(e.Error, context.DeadlineExceeded) || calls != 1 {
@@ -462,7 +462,7 @@ func TestIncomingEndNotificationRejectedDuringCleanup(t *testing.T) {
 	}
 }
 
-func TestInvalidStartKeepsPythonValueErrorCode(t *testing.T) {
+func TestInvalidStartPreservesSession(t *testing.T) {
 	sc := newScenario()
 	service, err := NewWhatsAppCallServiceWithDependencies(testConfig(), testOptions(), sc.dependencies())
 
@@ -473,7 +473,7 @@ func TestInvalidStartKeepsPythonValueErrorCode(t *testing.T) {
 	session := NewCallSession("sender", "chat", "en")
 	_, err = service.Execute(context.Background(), session, NewCallStateMachine().Apply)
 
-	if err == nil || session.State != CallStateFailed || session.ErrorCode != "ValueError" {
-		t.Fatalf("invalid start lost Python validation code: state=%s code=%s err=%v", session.State, session.ErrorCode, err)
+	if err == nil || session.State != CallStateTriggered || session.ErrorCode != "" || errorCode(err) != "validation_error" {
+		t.Fatalf("invalid start changed session or lost validation code: state=%s code=%s err=%v", session.State, session.ErrorCode, err)
 	}
 }

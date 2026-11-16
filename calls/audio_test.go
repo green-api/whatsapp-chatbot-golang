@@ -67,7 +67,7 @@ func TestBotFramesHave20msTimestampsAndBadSourceFails(t *testing.T) {
 	o.Enabled = false
 	tap := NewRecordingTap(NewCallRecorder(o))
 	source := testSource{make([]byte, 960)}
-	events := NewEvents()
+	events := newEventQueue()
 	track := NewBotTrack(source, tap, events.Emit)
 	defer track.Close()
 	a, err := track.Recv(context.Background())
@@ -119,12 +119,12 @@ func (brokenAudioSink) WriteAudio(context.Context, []byte) error { return errors
 func TestSenderFailureReportedWithoutAnotherRTCFrame(t *testing.T) {
 	o := DefaultRecordingOptions()
 	o.Enabled = false
-	events := NewEvents()
+	events := newEventQueue()
 	sink := NewCallerSink(brokenAudioSink{}, NewRecordingTap(NewCallRecorder(o)), events.Emit, DefaultInputAudioOptions())
 	sink.Attach(context.Background(), &oneRemote{})
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
-	event, err := events.Receive(ctx, NewDeadlines())
+	event, err := events.Receive(ctx, newDeadlines())
 	sink.Close()
 
 	if err != nil || event.Kind != "media_failed" {

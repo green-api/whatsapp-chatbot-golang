@@ -38,8 +38,8 @@ func TestRealMp3ContainsBothSidesAndCallerOwnsOutput(t *testing.T) {
 		binary.LittleEndian.PutUint16(b[i:], uint16(int16(6000*math.Sin(2*math.Pi*880*float64(i/2)/24000))))
 	}
 
-	r.Write(calls.TrackCaller, calls.PcmChunk{0, a})
-	r.Write(calls.TrackBot, calls.PcmChunk{0, b})
+	r.Write(calls.TrackCaller, calls.PcmChunk{Position: 0, Data: a})
+	r.Write(calls.TrackBot, calls.PcmChunk{Position: 0, Data: b})
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	path, err := r.Finish(ctx)
@@ -54,6 +54,23 @@ func TestRealMp3ContainsBothSidesAndCallerOwnsOutput(t *testing.T) {
 		t.Fatal("MP3 invalid", err)
 	}
 
+	assertRecordingFrequencies(t, decoded)
+
+	if r.TakeReadyOrDiscard() != path {
+		t.Fatal("recording transfer failed")
+	}
+
+	r.Discard()
+
+	if _, err := os.Stat(path); err != nil {
+		t.Fatal("transferred output removed")
+	}
+
+	os.Remove(path)
+}
+
+func assertRecordingFrequencies(t *testing.T, decoded []byte) {
+	t.Helper()
 	for _, frequency := range []float64{440, 880} {
 		var re, im float64
 		count := len(decoded) / 2
@@ -72,15 +89,4 @@ func TestRealMp3ContainsBothSidesAndCallerOwnsOutput(t *testing.T) {
 		}
 	}
 
-	if r.Take() != path {
-		t.Fatal("recording transfer failed")
-	}
-
-	r.Discard()
-
-	if _, err := os.Stat(path); err != nil {
-		t.Fatal("transferred output removed")
-	}
-
-	os.Remove(path)
 }

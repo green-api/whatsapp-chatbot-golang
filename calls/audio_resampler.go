@@ -5,7 +5,7 @@ import (
 	"math"
 )
 
-// The SDK uses 48 kHz PCM while the Python voice and recorder path uses 24 kHz.
+// The SDK uses 48 kHz PCM while the internal voice and recorder path uses 24 kHz.
 // A streaming low-pass filter suppresses aliasing and imaging at that boundary.
 const resamplerTaps = 33
 

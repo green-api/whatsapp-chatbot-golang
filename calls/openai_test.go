@@ -85,7 +85,7 @@ func TestRealtimeWebsocketConfigurationPromptPCMAndInterruption(t *testing.T) {
 	defer server.Close()
 	config := testConfig()
 	config.RealtimeURL = "ws" + strings.TrimPrefix(server.URL, "http")
-	events := NewEvents()
+	events := newEventQueue()
 	v := NewRealtimeConversation(config, DefaultPlaybackOptions(), events.Emit, "ru", 1, DefaultVadOptions())
 	defer v.Close()
 

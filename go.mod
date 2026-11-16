@@ -6,13 +6,13 @@ toolchain go1.24.2
 
 require (
 	github.com/coder/websocket v1.8.14
+	github.com/google/uuid v1.6.0
 	github.com/green-api/whatsapp-api-client-golang-v2 v1.1.0
 )
 
 require (
 	github.com/andybalholm/brotli v1.2.0 // indirect
 	github.com/gabriel-vasile/mimetype v1.4.12 // indirect
-	github.com/google/uuid v1.6.0 // indirect
 	github.com/klauspost/compress v1.18.3 // indirect
 	github.com/pion/datachannel v1.5.10 // indirect
 	github.com/pion/dtls/v3 v3.0.6 // indirect

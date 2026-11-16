@@ -3,12 +3,12 @@ package calls
 import (
 	"context"
 	"errors"
+	"github.com/green-api/whatsapp-api-client-golang-v2/opus"
+	sdk "github.com/green-api/whatsapp-api-client-golang-v2/voip"
 	"io"
 	"math"
 	"sync"
 	"time"
-	"github.com/green-api/whatsapp-api-client-golang-v2/opus"
-	sdk "github.com/green-api/whatsapp-api-client-golang-v2/voip"
 )
 
 type AudioSource interface {

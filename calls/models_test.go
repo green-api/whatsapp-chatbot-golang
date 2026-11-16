@@ -1,6 +1,8 @@
 package calls
 
 import (
+	"context"
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
@@ -129,12 +131,19 @@ func TestProviderErrorsRedactCredentialsAndRetainIdentity(t *testing.T) {
 	}
 }
 
-func TestValidationErrorsKeepPythonValueErrorCode(t *testing.T) {
-	if code := errorCode(validationError("invalid options")); code != "ValueError" {
-		t.Fatalf("validation error code = %q", code)
-	}
-
-	if code := errorCode(&CallCleanupError{Stage: "voice_close", Cause: validationError("invalid")}); code != "cleanup_voice_close_ValueError" {
-		t.Fatalf("cleanup error code = %q", code)
+func TestErrorCodeClassification(t *testing.T) {
+	for _, test := range []struct {
+		err  error
+		code string
+	}{
+		{validationError("invalid options"), "validation_error"},
+		{context.DeadlineExceeded, "timeout"},
+		{errors.New("operation failed"), "runtime_error"},
+		{&ProviderError{Provider: "custom", Code: "rejected"}, "rejected"},
+		{&CallCleanupError{Stage: "voice_close", Cause: validationError("invalid")}, "cleanup_voice_close_validation_error"},
+	} {
+		if code := errorCode(test.err); code != test.code {
+			t.Fatalf("error code = %q, want %q", code, test.code)
+		}
 	}
 }

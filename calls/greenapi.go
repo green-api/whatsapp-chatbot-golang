@@ -3,10 +3,10 @@ package calls
 import (
 	"context"
 	"errors"
+	sdk "github.com/green-api/whatsapp-api-client-golang-v2/voip"
 	"net/http"
 	"strings"
 	"sync"
-	sdk "github.com/green-api/whatsapp-api-client-golang-v2/voip"
 )
 
 type callAPI interface {
@@ -26,7 +26,6 @@ type callRTC interface {
 
 type GreenApiCall struct {
 	mu                                                                     sync.Mutex
-	session                                                                *CallSession
 	emit                                                                   EventSink
 	api                                                                    callAPI
 	rtc                                                                    callRTC
@@ -35,7 +34,6 @@ type GreenApiCall struct {
 	direction                                                              CallDirection
 	commandStarted, commandCompleted, remoteEnded, closing, connectionLost bool
 	closeOnce                                                              sync.Once
-	closeDone                                                              chan struct{}
 	closeErr                                                               error
 	httpClient                                                             *http.Client
 }
@@ -45,7 +43,7 @@ func NewGreenApiCall(c ProviderConfig, s *CallSession, emit EventSink) *GreenApi
 	client := &http.Client{Transport: transport}
 	api := sdk.New(sdk.Config{Host: c.APIURL, IDInstance: c.IDInstance, APITokenInstance: c.APITokenInstance, HTTPClient: client})
 
-	return &GreenApiCall{session: s, emit: emit, api: api, connect: func(f sdk.AudioFactory) callRTC { return api.Connect(f) }, callID: s.CallID, target: s.ChatID, direction: s.Direction, httpClient: client}
+	return &GreenApiCall{emit: emit, api: api, connect: func(f sdk.AudioFactory) callRTC { return api.Connect(f) }, callID: s.CallID, target: s.ChatID, direction: s.Direction, httpClient: client}
 }
 
 func (a *GreenApiCall) ensureOpen() error {
@@ -88,7 +86,7 @@ func (a *GreenApiCall) wrap(name string, err error) error {
 		return nil
 	}
 
-	return &ProviderError{"greenapi", name + "_" + errorCode(err), err.Error()}
+	return wrapProviderError("greenapi", name+"_"+errorCode(err), err)
 }
 
 func (a *GreenApiCall) Dial(ctx context.Context) error {
@@ -181,7 +179,7 @@ func (a *GreenApiCall) Accept(ctx context.Context) (AcceptResult, error) {
 	if state.State != "inc-call" || !owned {
 		a.mu.Unlock()
 
-		return "", &ProviderError{"greenapi", "offer_gone", "Incoming offer is no longer current"}
+		return "", &ProviderError{Provider: "greenapi", Code: "offer_gone", Detail: "Incoming offer is no longer current"}
 	}
 
 	a.commandStarted = true
@@ -222,7 +220,7 @@ func (a *GreenApiCall) ReconcileAccept(ctx context.Context, cause error) error {
 	}
 
 	if state.State == "idle" || state.Info != nil {
-		return &ProviderError{"greenapi", "offer_gone", "Incoming offer is no longer current"}
+		return &ProviderError{Provider: "greenapi", Code: "offer_gone", Detail: "Incoming offer is no longer current"}
 	}
 
 	return cause
@@ -294,7 +292,7 @@ func (a *GreenApiCall) onError(d any) {
 	a.mu.Unlock()
 
 	if !skip {
-		a.emit(RuntimeEvent{Kind: "media_failed", Error: &ProviderError{"greenapi", "rtc_error", "RTC failure"}})
+		a.emit(RuntimeEvent{Kind: "media_failed", Error: &ProviderError{Provider: "greenapi", Code: "rtc_error", Detail: "RTC failure"}})
 	}
 }
 
@@ -315,7 +313,7 @@ func (a *GreenApiCall) onDisconnect(d any) {
 	a.mu.Unlock()
 
 	if !skip {
-		a.emit(RuntimeEvent{Kind: "media_failed", Error: &ProviderError{"greenapi", "connection_lost", "Signaling permanently disconnected"}})
+		a.emit(RuntimeEvent{Kind: "media_failed", Error: &ProviderError{Provider: "greenapi", Code: "connection_lost", Detail: "Signaling permanently disconnected"}})
 	}
 }
 
@@ -339,7 +337,7 @@ func (a *GreenApiCall) onEndCall(d any) {
 	}
 
 	if detail.Reason == "connection-lost" {
-		a.emit(RuntimeEvent{Kind: "media_failed", Error: &ProviderError{"greenapi", "connection_lost", "Call connection lost"}})
+		a.emit(RuntimeEvent{Kind: "media_failed", Error: &ProviderError{Provider: "greenapi", Code: "connection_lost", Detail: "Call connection lost"}})
 	} else {
 		a.emit(RuntimeEvent{Kind: "remote_ended", Reason: detail.Cause})
 	}
@@ -417,7 +415,6 @@ func (a *GreenApiCall) Close() error {
 		a.mu.Lock()
 		a.closing = true
 		rtc := a.rtc
-		a.closeDone = make(chan struct{})
 		a.mu.Unlock()
 
 		if rtc != nil {
@@ -427,25 +424,7 @@ func (a *GreenApiCall) Close() error {
 		if a.httpClient != nil {
 			a.httpClient.CloseIdleConnections()
 		}
-
-		close(a.closeDone)
 	})
 
 	return a.closeErr
-}
-
-func (a *GreenApiCall) IsRTCClosePending() bool {
-	a.mu.Lock()
-	defer a.mu.Unlock()
-
-	if a.closeDone == nil {
-		return false
-	}
-
-	select {
-	case <-a.closeDone:
-		return false
-	default:
-		return true
-	}
 }

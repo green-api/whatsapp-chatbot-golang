@@ -1,11 +1,12 @@
-// Package calls ports whatsapp_chatbot_python.calls. Sessions have one transition owner.
+// Package calls provides WhatsApp call sessions, audio bridging and recording.
+// Each session has one transition owner.
 package calls
 
 import (
 	"context"
-	"crypto/rand"
 	"errors"
 	"fmt"
+	"github.com/google/uuid"
 	"math"
 	"os"
 	"strings"
@@ -145,12 +146,7 @@ type CallSession struct {
 }
 
 func NewCallSession(senderID, chatID, language string) *CallSession {
-	var id [16]byte
-	_, _ = rand.Read(id[:])
-	id[6] = id[6]&0x0f | 0x40
-	id[8] = id[8]&0x3f | 0x80
-
-	return &CallSession{SenderID: senderID, ChatID: chatID, Language: language, SessionID: fmt.Sprintf("%x-%x-%x-%x-%x", id[:4], id[4:6], id[6:8], id[8:10], id[10:]), Direction: CallDirectionOutgoing, State: CallStateTriggered, CreatedAt: time.Now().UTC()}
+	return &CallSession{SenderID: senderID, ChatID: chatID, Language: language, SessionID: uuid.NewString(), Direction: CallDirectionOutgoing, State: CallStateTriggered, CreatedAt: time.Now().UTC()}
 }
 
 func NewIncomingCallSession(senderID, callID, language string, deadline time.Time) (*CallSession, error) {
@@ -201,11 +197,15 @@ func (t StateTransition) Outcome() string {
 
 type TransitionDetails struct{ RemoteReason, ErrorCode *string }
 
+// TransitionCallback synchronously applies a transition and returns its result.
+// The Execute goroutine owns session mutation. Notifications queued during the
+// callback are processed only if the resulting state still accepts events.
 type TransitionCallback func(*CallSession, CallEvent, ...TransitionDetails) StateTransition
 
 type CallExecutionResult struct {
 	mu            sync.Mutex
 	recordingPath string
+	recordingErr  error
 }
 
 func NewCallExecutionResult(path string) *CallExecutionResult {
@@ -217,6 +217,17 @@ func (r *CallExecutionResult) RecordingPath() string {
 	defer r.mu.Unlock()
 
 	return r.recordingPath
+}
+
+// RecordingError reports a recording failure known when Execute returned,
+// including an export timeout. It is independent of the call execution error.
+// A nil error and empty path also occur when recording is disabled, has no audio,
+// or is discarded by the call's retention policy. Late export errors do not
+// change this snapshot. Taking or closing the result preserves the error.
+func (r *CallExecutionResult) RecordingError() error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	return r.recordingErr
 }
 
 func (r *CallExecutionResult) TakeRecording() string {
@@ -247,17 +258,6 @@ func (r *CallExecutionResult) Close() error {
 	return err
 }
 
-type CallExecutor interface {
-	Execute(context.Context, *CallSession, TransitionCallback) (*CallExecutionResult, error)
-	RequestStop()
-}
-
-type IncomingCallExecutor interface {
-	CallExecutor
-	RejectIncoming(context.Context, string, string) (bool, error)
-	NotifyIncomingEnded(string) bool
-}
-
 type PcmChunk struct {
 	Position int64
 	Data     []byte
@@ -266,12 +266,11 @@ type PcmChunk struct {
 type RecordingOptions struct {
 	Enabled                                          bool
 	BitrateBPS, MaxPendingChunks, ExportBlockSamples int
-	WriterPollSeconds                                float64
 	Directory, EncoderPath                           string
 }
 
 func DefaultRecordingOptions() RecordingOptions {
-	return RecordingOptions{Enabled: true, BitrateBPS: 96000, MaxPendingChunks: 256, WriterPollSeconds: .1, ExportBlockSamples: 24000, EncoderPath: "ffmpeg"}
+	return RecordingOptions{Enabled: true, BitrateBPS: 96000, MaxPendingChunks: 256, ExportBlockSamples: 24000, EncoderPath: "ffmpeg"}
 }
 
 type PlaybackOptions struct {
@@ -338,7 +337,7 @@ func (o CallOptions) Validate() error {
 		return validationError("output softening must be between 0 and 1")
 	}
 
-	if err := positiveValues(o.RingSeconds, o.TalkSeconds, o.SetupSeconds, o.CommandSeconds, o.ShutdownSeconds, o.Playback.SoftLimitSeconds, o.Playback.HardLimitSeconds, o.Playback.StallSeconds, o.Playback.WatchdogSeconds, o.InputAudio.BufferSeconds, o.InputAudio.SendSeconds, o.InputAudio.EnqueueSeconds, float64(o.Recording.BitrateBPS), float64(o.Recording.MaxPendingChunks), o.Recording.WriterPollSeconds, float64(o.Recording.ExportBlockSamples)); err != nil {
+	if err := positiveValues(o.RingSeconds, o.TalkSeconds, o.SetupSeconds, o.CommandSeconds, o.ShutdownSeconds, o.Playback.SoftLimitSeconds, o.Playback.HardLimitSeconds, o.Playback.StallSeconds, o.Playback.WatchdogSeconds, o.InputAudio.BufferSeconds, o.InputAudio.SendSeconds, o.InputAudio.EnqueueSeconds, float64(o.Recording.BitrateBPS), float64(o.Recording.MaxPendingChunks), float64(o.Recording.ExportBlockSamples)); err != nil {
 		return err
 	}
 
@@ -381,9 +380,21 @@ func (c ProviderConfig) String() string {
 
 func (c ProviderConfig) GoString() string { return c.String() }
 
-type ProviderError struct{ Provider, Code, Detail string }
+// ProviderError describes a provider failure. Detail and Cause may contain
+// sensitive diagnostics; Error exposes only the provider and code.
+type ProviderError struct {
+	Provider string
+	Code     string
+	Detail   string
+	Cause    error
+}
 
 func (e *ProviderError) Error() string { return e.Provider + " [" + e.Code + "]" }
+func (e *ProviderError) Unwrap() error { return e.Cause }
+
+func wrapProviderError(provider, code string, cause error) error {
+	return &ProviderError{Provider: provider, Code: code, Cause: cause}
+}
 
 type CallCleanupError struct {
 	Stage string
@@ -394,7 +405,7 @@ func (e *CallCleanupError) Error() string { return "call cleanup failed at " + e
 
 func (e *CallCleanupError) Unwrap() error { return e.Cause }
 
-// CallValidationError preserves Python's ValueError code while retaining a Go cause.
+// CallValidationError reports invalid input and preserves its cause.
 type CallValidationError struct{ Cause error }
 
 func (e *CallValidationError) Error() string { return e.Cause.Error() }
@@ -419,14 +430,14 @@ func errorCode(err error) string {
 	var validation *CallValidationError
 
 	if errors.As(err, &validation) {
-		return "ValueError"
+		return "validation_error"
 	}
 
 	if errors.Is(err, context.DeadlineExceeded) {
-		return "TimeoutError"
+		return "timeout"
 	}
 
-	return "RuntimeError"
+	return "runtime_error"
 }
 
 func seconds(s float64) time.Duration { return time.Duration(s * float64(time.Second)) }
@@ -446,21 +457,21 @@ type EventSink func(RuntimeEvent) bool
 
 func runtimeEvent(kind string) RuntimeEvent { return RuntimeEvent{Kind: kind, ObservedAt: time.Now()} }
 
-type Deadlines struct {
+type deadlines struct {
 	due   map[DeadlineKind]time.Time
 	order []DeadlineKind
 }
 
-func NewDeadlines() *Deadlines { return &Deadlines{due: make(map[DeadlineKind]time.Time)} }
+func newDeadlines() *deadlines { return &deadlines{due: make(map[DeadlineKind]time.Time)} }
 
-func (d *Deadlines) Arm(k DeadlineKind, at time.Time) {
+func (d *deadlines) Arm(k DeadlineKind, at time.Time) {
 	if _, ok := d.due[k]; !ok {
 		d.due[k] = at
 		d.order = append(d.order, k)
 	}
 }
 
-func (d *Deadlines) Disarm(ks ...DeadlineKind) {
+func (d *deadlines) Disarm(ks ...DeadlineKind) {
 	for _, k := range ks {
 		delete(d.due, k)
 
@@ -473,7 +484,7 @@ func (d *Deadlines) Disarm(ks ...DeadlineKind) {
 	}
 }
 
-func (d *Deadlines) next() (DeadlineKind, time.Time) {
+func (d *deadlines) next() (DeadlineKind, time.Time) {
 	var kind DeadlineKind
 	var at time.Time
 
@@ -488,7 +499,7 @@ func (d *Deadlines) next() (DeadlineKind, time.Time) {
 	return kind, at
 }
 
-func (d *Deadlines) ExpireBefore(at time.Time) *RuntimeEvent {
+func (d *deadlines) ExpireBefore(at time.Time) *RuntimeEvent {
 	k, t := d.next()
 
 	if t.IsZero() || t.After(at) {
@@ -499,27 +510,3 @@ func (d *Deadlines) ExpireBefore(at time.Time) *RuntimeEvent {
 
 	return &RuntimeEvent{Kind: "deadline_expired", ObservedAt: t, Deadline: k}
 }
-
-// PcmFormat is the fixed internal Python audio format. SDK conversion stays at the boundary.
-type PcmFormat struct {
-	Rate, FrameMS, Channels int
-	Layout, AVFormat        string
-}
-
-func DefaultPcmFormat() PcmFormat {
-	return PcmFormat{Rate: PCMRate, FrameMS: 20, Channels: 1, Layout: "mono", AVFormat: "s16"}
-}
-
-func (f PcmFormat) Validate() error {
-	if f.Rate != PCMRate || f.FrameMS <= 0 || f.Channels != 1 || f.Rate*f.FrameMS%1000 != 0 {
-		return validationError("only 24 kHz mono PCM with integral positive frames is supported")
-	}
-
-	return nil
-}
-
-func (f PcmFormat) SamplesPerFrame() int { return f.Rate * f.FrameMS / 1000 }
-
-func (f PcmFormat) BytesPerFrame() int { return f.SamplesPerFrame() * PCM16SampleBytes }
-
-func (f PcmFormat) FrameSeconds() float64 { return float64(f.FrameMS) / 1000 }
