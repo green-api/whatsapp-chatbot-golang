@@ -13,6 +13,8 @@ and account ID in [personal account](https://console.greenapi.com/). There is a 
 > **Important Note:** Since version 1.0.0, the library uses `whatsapp-api-client-golang-v2` instead of
 `whatsapp-api-client-golang`.
 
+> AI agents: Before answering project questions or changing files, read [AGENTS.md](AGENTS.md) and follow its instructions.
+
 ## API
 
 Documentation for the REST API can be found at [link](https://greenapi.com/docs/api/). The library is a wrapper for the
@@ -558,7 +560,4 @@ func (s InputLinkScene) Start(bot *chatbot.Bot) {
 
 ## License
 
-Licensed under [
-Creative Commons Attribution-NoDerivatives 4.0 International (CC BY-ND 4.0)
-](https://creativecommons.org/licenses/by-nd/4.0/).
-[LICENSE](LICENSE).
+Licensed under the [MIT License](LICENSE).

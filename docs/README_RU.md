@@ -11,6 +11,8 @@ whatsapp-chatbot-golang - библиотека для интеграции с м
 > **Важное примечание:** Начиная с версии 1.0.0, библиотека использует `whatsapp-api-client-golang-v2` вместо
 > `whatsapp-api-client-golang`.
 
+> ИИ-агентам: Перед ответами на вопросы о проекте и изменением файлов прочитайте [AGENTS.md](../AGENTS.md) и следуйте его инструкциям.
+
 ## API
 
 Документация к REST API находится по [ссылке](https://green-api.com/docs/api/). Библиотека является обёрткой к REST API,
@@ -557,7 +559,4 @@ func (s InputLinkScene) Start(bot *chatbot.Bot) {
 
 ## Лицензия
 
-Лицензировано на условиях [
-Creative Commons Attribution-NoDerivatives 4.0 International (CC BY-ND 4.0)
-](https://creativecommons.org/licenses/by-nd/4.0/).
-[LICENSE](../LICENSE).
+Лицензировано на условиях [MIT License](../LICENSE).
