@@ -19,7 +19,15 @@ type WhatsAppCallService struct {
 	stopped bool
 }
 
+// NewWhatsAppCallService uses GREEN-API for calls and OpenAI Realtime for voice.
 func NewWhatsAppCallService(config ProviderConfig, options ...CallOptions) (*WhatsAppCallService, error) {
+	return NewWhatsAppCallServiceWithVoice(config, nil, options...)
+}
+
+// NewWhatsAppCallServiceWithVoice uses GREEN-API for calls and creates a voice
+// conversation with factory for each call. A nil factory selects OpenAI Realtime
+// and requires config.OpenAIAPIKey. An explicit factory takes precedence.
+func NewWhatsAppCallServiceWithVoice(config ProviderConfig, factory VoiceFactory, options ...CallOptions) (*WhatsAppCallService, error) {
 	o := DefaultCallOptions()
 
 	if len(options) > 1 {
@@ -30,13 +38,41 @@ func NewWhatsAppCallService(config ProviderConfig, options ...CallOptions) (*Wha
 		o = options[0]
 	}
 
-	return NewWhatsAppCallServiceWithDependencies(config, o, defaultDependencies())
+	if factory == nil && config.OpenAIAPIKey == "" {
+		return nil, validationError("provide OpenAIAPIKey or a custom voice provider")
+	}
+
+	deps := defaultDependencies()
+
+	if factory != nil {
+		deps.NewVoice = func(_ ProviderConfig, playback PlaybackOptions, emit EventSink, language string, shutdown float64, vad VadOptions) VoiceConversation {
+			return factory(VoiceParams{Language: language, Playback: playback, VAD: vad, ShutdownSeconds: shutdown, Emit: voiceEventSink(emit)})
+		}
+	}
+
+	return NewWhatsAppCallServiceWithDependencies(config, o, deps)
 }
 
-// NewWhatsAppCallServiceWithDependencies also allows non-OpenAI voice providers.
+func voiceEventSink(emit EventSink) EventSink {
+	return func(event RuntimeEvent) bool {
+		switch event.Kind {
+		case "media_failed":
+			if event.Error != nil {
+				return emit(RuntimeEvent{Kind: "media_failed", Error: event.Error})
+			}
+		case "audio_loss":
+			return emit(RuntimeEvent{Kind: "audio_loss", Loss: event.Loss})
+		}
+
+		return false
+	}
+}
+
+// NewWhatsAppCallServiceWithDependencies accepts explicit transport and voice factories.
+// The voice factory is responsible for its provider's credentials.
 func NewWhatsAppCallServiceWithDependencies(config ProviderConfig, o CallOptions, deps Dependencies) (*WhatsAppCallService, error) {
-	if config.IDInstance == "" || config.APITokenInstance == "" || config.OpenAIAPIKey == "" {
-		return nil, validationError("instance and provider credentials required")
+	if config.IDInstance == "" || config.APITokenInstance == "" {
+		return nil, validationError("GREEN-API IDInstance and APITokenInstance are required")
 	}
 
 	if err := o.Validate(); err != nil {

@@ -2,6 +2,7 @@ package calls
 
 import (
 	"context"
+	"errors"
 	"strings"
 	"testing"
 )
@@ -19,7 +20,8 @@ func TestCallServiceConstructorValidatesContract(t *testing.T) {
 		{name: "valid", config: testConfig(), deps: deps, valid: true},
 		{name: "missing instance", config: ProviderConfig{APITokenInstance: "token", OpenAIAPIKey: "key"}, deps: deps},
 		{name: "missing token", config: ProviderConfig{IDInstance: "instance", OpenAIAPIKey: "key"}, deps: deps},
-		{name: "missing voice key", config: ProviderConfig{IDInstance: "instance", APITokenInstance: "token"}, deps: deps},
+		{name: "custom voice without key", config: ProviderConfig{IDInstance: "instance", APITokenInstance: "token"}, deps: deps, valid: true},
+		{name: "missing transport factory", config: testConfig(), deps: Dependencies{NewVoice: deps.NewVoice}},
 		{name: "missing factory", config: testConfig(), deps: Dependencies{NewAPI: deps.NewAPI}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -37,6 +39,68 @@ func TestCallServiceConstructorValidatesContract(t *testing.T) {
 
 	if _, err := NewWhatsAppCallService(testConfig(), options, options); err == nil || !strings.Contains(err.Error(), "at most one") {
 		t.Fatalf("unexpected variadic option validation: %v", err)
+	}
+}
+
+func TestCallServiceSelectsVoice(t *testing.T) {
+	for _, tc := range []struct {
+		name    string
+		key     string
+		custom  bool
+		wantErr string
+	}{
+		{name: "OpenAI", key: "key"},
+		{name: "missing voice", wantErr: "provide OpenAIAPIKey or a custom voice provider"},
+		{name: "custom without key", custom: true},
+		{name: "custom takes precedence", key: "key", custom: true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			config := testConfig()
+			config.OpenAIAPIKey = tc.key
+			var service *WhatsAppCallService
+			var err error
+			custom := &fakeVoice{s: newScenario()}
+			if tc.custom {
+				service, err = NewWhatsAppCallServiceWithVoice(config, func(VoiceParams) VoiceConversation { return custom })
+			} else {
+				service, err = NewWhatsAppCallService(config)
+			}
+
+			if tc.wantErr != "" {
+				var validation *CallValidationError
+				if !errors.As(err, &validation) || err.Error() != tc.wantErr {
+					t.Fatalf("wanted validation error %q, got %v", tc.wantErr, err)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatal(err)
+			}
+			resources := newCallResources(config, service.options, testSession(false), func(RuntimeEvent) bool { return true }, service.deps)
+			t.Cleanup(func() { _ = resources.Close() })
+			if _, ok := resources.API.(*GreenApiCall); !ok {
+				t.Fatalf("transport is %T, want GREEN-API", resources.API)
+			}
+			if tc.custom && resources.Voice != custom {
+				t.Fatalf("voice is %T, want the custom conversation", resources.Voice)
+			}
+			if _, ok := resources.Voice.(*RealtimeConversation); !tc.custom && !ok {
+				t.Fatalf("voice is %T, want OpenAI Realtime", resources.Voice)
+			}
+		})
+	}
+}
+
+func TestCallServiceWithVoiceRequiresGreenAPICredentials(t *testing.T) {
+	for _, config := range []ProviderConfig{{IDInstance: "instance"}, {APITokenInstance: "token"}} {
+		_, err := NewWhatsAppCallServiceWithVoice(config, func(VoiceParams) VoiceConversation {
+			t.Fatal("factory called during construction")
+			return nil
+		})
+		var validation *CallValidationError
+		if !errors.As(err, &validation) || !strings.Contains(err.Error(), "GREEN-API") {
+			t.Fatalf("wanted GREEN-API validation error, got %v", err)
+		}
 	}
 }
 

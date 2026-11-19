@@ -553,6 +553,15 @@ func (s InputLinkScene) Start(bot *chatbot.Bot) {
 }
 ```
 
+## Голосовые звонки WhatsApp
+
+Пакет `calls` использует GREEN-API для входящих и исходящих звонков. Укажите ID инстанса GREEN-API и токен в `calls.ProviderConfig`.
+
+- Для OpenAI Realtime задайте `OpenAIAPIKey` и вызовите `calls.NewWhatsAppCallService(config)`.
+- Для своего голосового провайдера вызовите `calls.NewWhatsAppCallServiceWithVoice(config, assistant.NewVoice)`. Фабрика создаёт новую `calls.VoiceConversation` для каждого звонка. Переданная фабрика имеет приоритет и работает без ключа OpenAI.
+
+Если отсутствуют и фабрика, и ключ, конструктор возвращает ошибку валидации. См. [примеры звонков и контракт голосового адаптера](../examples/calls/README.md).
+
 ## Документация по методам сервиса
 
 [Документация по методам сервиса](https://green-api.com/docs/api/)

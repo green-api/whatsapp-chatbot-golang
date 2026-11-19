@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"reflect"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -249,12 +250,35 @@ type CallProvider interface {
 	Close() error
 }
 
+// VoiceConversation handles the AI audio for one call. Audio is little-endian
+// PCM16 mono at PCMRate. ReadFrame must return PCMBytesPerFrame bytes without
+// waiting for the provider, using silence when no audio is ready.
+// Start receives a setup context that the runner cancels when preparation
+// completes, times out, or is stopped. Use a session-owned context for
+// background audio processing and cancel it in Close.
+// PromptOnce receives nil when the conversation should use its default greeting.
+// Methods may run concurrently. Close must release resources even after a failed Start.
 type VoiceConversation interface {
 	AudioSource
 	AudioSink
 	Start(context.Context) error
 	PromptOnce(context.Context, *string) error
 	Close() error
+}
+
+// VoiceFactory creates a fresh, non-nil VoiceConversation for a call. Return
+// promptly and perform network setup in VoiceConversation.Start.
+type VoiceFactory func(VoiceParams) VoiceConversation
+
+// VoiceParams contains the language and voice settings for a call.
+type VoiceParams struct {
+	Language        string
+	Playback        PlaybackOptions
+	VAD             VadOptions
+	ShutdownSeconds float64
+	// Emit reports "media_failed" with Error set or "audio_loss" with Loss set.
+	// It returns true when the call runner accepts the event.
+	Emit EventSink
 }
 
 type Dependencies struct {
@@ -291,14 +315,31 @@ type callResources struct {
 
 func newCallResources(c ProviderConfig, o CallOptions, s *CallSession, emit EventSink, deps Dependencies) *callResources {
 	r := &callResources{options: o, session: s, operations: newOperations(emit), Recorder: NewCallRecorder(o.Recording)}
-	r.Voice = deps.NewVoice(c, o.Playback, emit, s.Language, o.ShutdownSeconds, o.Vad)
+	r.Voice = normalizeVoice(deps.NewVoice(c, o.Playback, emit, s.Language, o.ShutdownSeconds, o.Vad))
 	r.Audio = NewAudioBridge(r.Voice, r.Voice, r.Recorder, emit, o.InputAudio, o.OutputSoftening)
 	r.API = deps.NewAPI(c, s, emit)
 
 	return r
 }
 
+func normalizeVoice(voice VoiceConversation) VoiceConversation {
+	value := reflect.ValueOf(voice)
+	switch value.Kind() {
+	case reflect.Invalid:
+		return nil
+	case reflect.Pointer, reflect.Map, reflect.Slice, reflect.Func, reflect.Chan:
+		if value.IsNil() {
+			return nil
+		}
+	}
+	return voice
+}
+
 func (r *callResources) Prepare(ctx context.Context) error {
+	if r.Voice == nil {
+		return validationError("voice factory returned a nil conversation")
+	}
+
 	if err := r.Voice.Start(ctx); err != nil {
 		return err
 	}
@@ -366,7 +407,11 @@ func (r *callResources) Close() error {
 	})
 	r.closeStep("greenapi_close", r.API.Close)
 	r.closeStep("audio_close", r.Audio.Close)
-	r.closeStep("voice_close", r.Voice.Close)
+
+	if r.Voice != nil {
+		r.closeStep("voice_close", r.Voice.Close)
+	}
+
 	keepRecording := r.session.EndReason == CallEndReasonRemoteHangup || r.session.EndReason == CallEndReasonTalkTimeout
 	r.closeStep("recording_close", func() error {
 		ctx, cancel := context.WithTimeout(context.Background(), seconds(r.options.ShutdownSeconds))

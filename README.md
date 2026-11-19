@@ -554,6 +554,15 @@ func (s InputLinkScene) Start(bot *chatbot.Bot) {
 }
 ```
 
+## WhatsApp voice calls
+
+The `calls` package uses GREEN-API for incoming and outgoing calls. Provide the GREEN-API instance ID and token in `calls.ProviderConfig`.
+
+- For OpenAI Realtime, set `OpenAIAPIKey` and use `calls.NewWhatsAppCallService(config)`.
+- For your own voice provider, use `calls.NewWhatsAppCallServiceWithVoice(config, assistant.NewVoice)`. The factory creates a new `calls.VoiceConversation` for each call. An explicit factory takes precedence and works without an OpenAI key.
+
+The constructor returns a validation error if both the factory and the key are missing. See the [call examples and voice adapter contract](examples/calls/README.md).
+
 ## Documentation on service methods
 
 [Documentation on service methods](https://greenapi.com/docs/api/)

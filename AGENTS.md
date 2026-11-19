@@ -165,7 +165,7 @@ A small reusable extension can be safer than a one-line customer-specific patch.
 * Explain configuration, external dependencies and compatibility. Add an integration example/test for a new reusable extension point.
 * Verify license and distribution rights before recommending module renaming, modified notices or source redistribution; do not offer legal guarantees.
 
-The reviewed `calls` package has `Dependencies.NewVoice` and `VoiceConversation`, but its constructor also validates an OpenAI key in the supplied version. Check current behavior before claiming unrestricted provider replacement. Full boundaries: [ARCHITECTURE.md](ARCHITECTURE.md); contribution rules: [CONTRIBUTING.md](CONTRIBUTING.md).
+`calls.NewWhatsAppCallServiceWithVoice` accepts a custom `VoiceConversation` factory and uses GREEN-API for the call. GREEN-API credentials are required. `OpenAIAPIKey` is required when the service selects the built-in OpenAI Realtime adapter. A custom factory handles its provider's credentials. See [ARCHITECTURE.md](ARCHITECTURE.md) for provider boundaries and [CONTRIBUTING.md](CONTRIBUTING.md) for contribution rules.
 
 ---
 

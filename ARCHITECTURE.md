@@ -172,11 +172,12 @@ The public provider extension points in `calls/call_runner.go` are:
 
 * `CallProvider` — calling operations such as `Open`, `Dial`, `Accept`, `StartAudio`, `Finish`, `RejectOffer`, and `Close`.
 * `VoiceConversation` — an `AudioSource` and `AudioSink` with `Start`, `PromptOnce` and `Close`.
-* `Dependencies` — `NewAPI` and `NewVoice` factories.
+* `VoiceFactory` — creates a `VoiceConversation` for each call using `VoiceParams`.
+* `Dependencies` — explicit `NewAPI` and `NewVoice` factories for `NewWhatsAppCallServiceWithDependencies`.
 
-`NewWhatsAppCallServiceWithDependencies` accepts injected factories. This is a real potential boundary for changing the voice provider without rewriting call orchestration.
+`NewWhatsAppCallService` uses GREEN-API for the call and OpenAI Realtime for voice. `NewWhatsAppCallServiceWithVoice` keeps GREEN-API and uses the supplied voice factory when present. The GREEN-API instance ID and token are required. The OpenAI key is required when the built-in voice is selected. With `NewWhatsAppCallServiceWithDependencies`, the supplied voice factory owns its provider's credential requirements.
 
-**Observed constructor limitation:** in the reviewed implementation, `NewWhatsAppCallServiceWithDependencies` validates an `OpenAIAPIKey` even when a custom `NewVoice` is injected. Therefore an interface alone does not prove provider replacement is fully configuration-independent. Verify constructor, factory, audio, and cleanup paths as one contract before promising White Label compatibility.
+The runner creates the voice session during call resource setup and owns `Start`, `PromptOnce` and `Close`. The `Start` context expires with the setup command. The adapter owns the context for background audio and cancels it in `Close`. With `NewWhatsAppCallServiceWithVoice`, `VoiceParams.Emit` accepts only `media_failed` with an error and `audio_loss`. See the [custom voice example](examples/calls/README.md) for the factory contract.
 
 Common error codes are `validation_error`, `timeout` and `runtime_error`. Provider codes retain their own names; cleanup codes include the stage and underlying code.
 
